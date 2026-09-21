@@ -1,0 +1,25 @@
+Millionaire Mind - Session Replay Log
+Player: dawad
+Ended: 2026-09-21T14:00:37.193300700
+Outcome: Missed a question
+Final winnings: $0
+----------------------------------------
+Question history:
+Q01 [Remembering] (R2) - CORRECT
+  Prompt: What is the name for a step-by-step set of rules a computer follows to solve a problem or complete a task?
+  Chosen: A) Algorithm
+  Correct answer: A) Algorithm
+  Source: AI Fundamentals Course Packet, Ch. 1, p. 4
+Q02 [Remembering] (R4) - WRONG
+  Prompt: Which of these is a subfield of AI focused on enabling computers to interpret images?
+  Chosen: D) Cryptography
+  Correct answer: A) Computer Vision
+  Source: AI Fundamentals Course Packet, Ch. 1, p. 6
+----------------------------------------
+Bloom's report:
+  Remembering: 1/2 correct
+  Understanding: 0/0 correct
+  Applying: 0/0 correct
+  Analyzing: 0/0 correct
+  Evaluating: 0/0 correct
+  Creating: 0/0 correct
