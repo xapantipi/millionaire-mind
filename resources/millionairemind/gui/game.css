@@ -1,0 +1,58 @@
+.root {
+    -fx-font-smoothing-type: lcd;
+}
+
+.screen-root {
+    -fx-background-color: #fcfcfa;
+    -fx-border-color: #d9dce2;
+    -fx-border-width: 1;
+    -fx-padding: 5%;
+}
+
+.title-small {
+    -fx-font-family: "Impact", "Arial Narrow", sans-serif;
+    -fx-font-weight: bold;
+    -fx-text-fill: #0e1116;
+}
+
+.title-big {
+    -fx-font-family: "Impact", "Arial Narrow", sans-serif;
+    -fx-font-weight: bold;
+    -fx-text-fill: #0e1116;
+}
+
+.screen-heading {
+    -fx-font-family: "Georgia", "Times New Roman", serif;
+    -fx-font-weight: bold;
+    -fx-text-fill: #0e1116;
+}
+
+.menu-button {
+    -fx-background-color: #182230;
+    -fx-text-fill: #fcfcfa;
+    -fx-font-family: "Georgia", "Times New Roman", serif;
+    -fx-font-weight: bold;
+    -fx-background-radius: 999;
+    -fx-padding: 0.55em 1.35em;
+    -fx-cursor: hand;
+}
+
+.menu-button:hover {
+    -fx-background-color: #263346;
+}
+
+.menu-button:pressed {
+    -fx-background-color: #101924;
+}
+
+.menu-button:focused {
+    -fx-effect:
+        dropshadow(
+            gaussian,
+            rgba(24,34,48,0.25),
+            7,
+            0.2,
+            0,
+            0
+        );
+}

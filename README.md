@@ -1,112 +1,130 @@
-# Millionaire Mind -- CLI Backend
+# Millionaire Mind
 
-A Java console backend for *Millionaire Mind*, the Bloom's Taxonomy variant
-of *Who Wants to Be a Millionaire?* on AI fundamentals, following the
-architecture in the team proposal (Section 6).
+**Millionaire Mind** is a JavaFX quiz game inspired by *Who Wants to Be a
+Millionaire?* and organized around Bloom's Taxonomy. The project combines a
+clean, responsive desktop interface with a reusable game engine and a
+source-cited question bank.
+
+## Current experience
+
+The default entry point is the JavaFX application:
+
+- A fullscreen title screen with **Play**, **Instructions**, and **Quit**
+  actions
+- Responsive typography and controls that adapt to the window size
+- F11 to toggle fullscreen and Esc to leave fullscreen
+- A separate console UI for running the game without the graphical interface
+
+The GUI is still being built out. The underlying game rules, question bank,
+lifelines, reporting, and replay logging are already implemented in the
+backend.
 
 ## Requirements
 
-- JDK 17 or later (uses `java.util.random.RandomGenerator`, switch
-  expressions, and `String.isBlank()`). No external libraries or network
-  access are required -- the whole game is self-contained.
+- JDK 21 or later
+- Maven 3.9 or later
+- A desktop environment capable of running JavaFX
 
-## Build & run
+JavaFX is downloaded by Maven from the dependencies declared in
+[`pom.xml`](C:/Users/AARB/millionaire-mind_copy/pom.xml), so no separate
+JavaFX installation is required.
 
-```bash
-./build.sh      # compiles to ./out and copies the question bank alongside it
-./run.sh        # plays with the bundled bank (resources/questions.csv)
+## Run the application
 
-# or, to try a different/expanded question bank file:
-./run.sh path/to/other-questions.csv
-```
-
-Manually, without the scripts:
+From the project root:
 
 ```bash
-javac -d out $(find src -name "*.java")
-cp resources/questions.csv out/
-java -cp out millionairemind.ConsoleUI
+mvn clean javafx:run
 ```
 
-Session replay logs are written to `logs/session-<name>-<timestamp>.log`.
+The application starts in fullscreen mode. Use **F11** to switch between
+fullscreen and windowed mode, and **Esc** to exit fullscreen.
 
-## Project layout
+## Run the console version
 
+The original console entry point remains available through Maven:
+
+```bash
+mvn compile exec:java
 ```
+
+To use a different question bank, pass its path as the first argument:
+
+```bash
+mvn compile exec:java -Dexec.args="path/to/questions.csv"
+```
+
+The repository also contains `build.sh` and `run.sh` as legacy helpers for the
+older standalone console workflow. Maven is the recommended build and run
+workflow because it includes the JavaFX dependency and resource configuration.
+
+## Project structure
+
+```text
 src/main/java/millionairemind/
-  BloomLevel.java       Bloom's six levels + which question slots (1-15) each owns
-  PrizeLadder.java       The 15-rung prize table and the two checkpoint slots (Q5, Q10)
-  Question.java           POJO: prompt, 4 options, correct index, hint, source citation
-  QuestionBank.java       Loads the CSV question bank, draws unused questions per level
-  LifelineManager.java    50:50 / Spin the Wheel / Switch the Question / Phone a Friend
-  PlayerSession.java      Banked winnings, answer history, Bloom's report tallying
-  GameEngine.java         Game state + rules (checkpoints, drop-on-wrong, walk away)
-  ReplayLogger.java       Writes the full session + Bloom's report to a local log file
-  ConsoleUI.java          Thin console presentation layer (talks only to GameEngine)
+  BloomLevel.java       Bloom's six levels and their question slots
+  PrizeLadder.java      Prize values and checkpoint amounts
+  Question.java         Question prompt, options, answer, hint, and citation
+  QuestionBank.java     CSV loading and randomized question selection
+  LifelineManager.java  50:50, Spin the Wheel, Switch, and Phone a Friend
+  PlayerSession.java    Winnings, answer history, and Bloom's report data
+  GameEngine.java       Game state and gameplay rules
+  ReplayLogger.java     Local session replay logging
+  ConsoleUI.java        Console presentation layer
+  gui/
+    Main.java           JavaFX application entry point
+    GameUI.java         Screen navigation and window behavior
+    screens/            Title, instructions, and play screens
 
 resources/
-  questions.csv           The compiled question bank (see format below)
+  questions.csv         Bundled question bank
+  millionairemind/
+    gui/game.css        JavaFX theme
 ```
 
-This mirrors the "Backend Architecture (Java)" section of the proposal
-exactly: `GameEngine` owns state and rules, `QuestionBank` only knows how
-to load and draw questions, `LifelineManager` only knows lifelines,
-`PlayerSession` only tracks progress/results, `ReplayLogger` only persists
-logs, and `ConsoleUI` is a thin layer that talks solely to `GameEngine`.
-Swapping in a Swing/JavaFX `GameUI` later means writing a new class against
-the same `GameEngine` API -- nothing above the UI layer needs to change.
+The UI layers depend on `GameEngine`, not the other way around. This keeps the
+game rules reusable while the JavaFX screens continue to evolve.
 
-## Question bank format (`resources/questions.csv`)
+## Gameplay rules
 
-One header row, then one row per question:
+- 15 questions are distributed across six Bloom's levels:
+  Remembering (Q1–2), Understanding (Q3–5), Applying (Q6–7),
+  Analyzing (Q8–10), Evaluating (Q11–13), and Creating (Q14–15)
+- Prizes range from $100 to $1,000,000
+- Checkpoints are reached at Q5 and Q10
+- A wrong answer returns the player to the most recent checkpoint
+- Walking away banks the last checkpoint amount
+- Each lifeline can be used once per game:
+  **50:50**, **Spin the Wheel**, **Switch the Question**, and
+  **Phone a Friend**
+- Questions are randomly selected from the unused questions in their Bloom's
+  level
+- A post-game report shows correct and incorrect answers by level
+- Each session is written to `logs/session-<name>-<timestamp>.log`
 
-```
+## Question bank format
+
+The bundled file is [`resources/questions.csv`](C:/Users/AARB/millionaire-mind_copy/resources/questions.csv).
+It contains one header row followed by one question per row:
+
+```text
 id,level,prompt,optionA,optionB,optionC,optionD,correctIndex,hint,sourceReading,pageNumber
 ```
 
-- `level` is one of `REMEMBERING`, `UNDERSTANDING`, `APPLYING`,
-  `ANALYZING`, `EVALUATING`, `CREATING`.
-- `correctIndex` is 0-based (0=A, 1=B, 2=C, 3=D).
-- `hint` is the text revealed by the **Phone a Friend** lifeline.
-- `sourceReading` + `pageNumber` are shown after every answer as the
-  citation, per the proposal's "Source Citation on Every Question" feature.
-- Wrap any field containing a comma or quote in double quotes (standard
-  CSV quoting, `""` for an embedded quote).
+- `level` must be one of `REMEMBERING`, `UNDERSTANDING`, `APPLYING`,
+  `ANALYZING`, `EVALUATING`, or `CREATING`
+- `correctIndex` is zero-based: `0=A`, `1=B`, `2=C`, `3=D`
+- `hint` is revealed by **Phone a Friend**
+- `sourceReading` and `pageNumber` provide the citation shown after an answer
+- Fields containing commas or quotes must use standard CSV quoting; represent
+  an embedded quote as `""`
 
-**The bundled `questions.csv` ships 30 placeholder questions (5 per
-Bloom's level) covering common AI-fundamentals topics (supervised vs.
-unsupervised learning, overfitting, bias, NLP/computer vision, evaluation
-metrics, etc.), each with an invented `"AI Fundamentals Course Packet"`
-citation.** Per Section 4 of the proposal, replace these with each team
-member's own six hand-authored, source-cited questions (one per Bloom's
-level) drawn from your actual assigned readings -- just keep the same 11
-columns and 4-option format. The engine doesn't care how many questions
-sit in a level's pool beyond the 2 (or more) needed per playthrough; more
-rows per level just means more variety across replays, per the
-"Randomized Draw Within Each Level" feature.
+Add more questions to a level to increase variety between playthroughs. Keep
+the same 11 columns and four-option format.
 
-## Gameplay rules implemented
+## Planned work
 
-- 15 questions across six Bloom's tiers (`Q1-2` Remembering, `Q3-5`
-  Understanding, `Q6-7` Applying, `Q8-10` Analyzing, `Q11-13` Evaluating,
-  `Q14-15` Creating), prizes from $100 up to $1,000,000.
-- Checkpoints at Q5 and Q10: a wrong answer drops the player back to the
-  last checkpoint they passed (or to $0 if none yet).
-- Walk Away at any time banks the last checkpoint amount.
-- Four lifelines, each usable once per game: 50:50, Spin the Wheel
-  (weighted: reveal-one-wrong / reduce-to-two / bonus-time), Switch the
-  Question (redraws from the same Bloom's level), Phone a Friend (reveals
-  the question's hint).
-- Every question in a level is drawn at random from the unused pool for
-  that level, so repeat playthroughs vary even though the bank is fixed.
-- Post-game Bloom's report: per-level correct/incorrect tally plus
-  strongest/weakest level, computed entirely locally.
-- Full session replay log (every question drawn, chosen answer, outcome,
-  and the Bloom's breakdown) written to `logs/`.
-
-## Not yet implemented (left for the Swing/JavaFX or timer follow-up)
-
-- The optional 30-second-per-question timer mode mentioned in Section 3
-  (the base implementation is untimed, as specified).
-- A graphical `GameUI` matching the wireframes -- `ConsoleUI` can be
-  swapped for one without touching `GameEngine`.
+- Connect the JavaFX play screen to the full game engine
+- Add the question, answer, prize ladder, and lifeline controls to the GUI
+- Add the post-game Bloom's report and replay summary to the GUI
+- Add the optional timed-question mode
