@@ -48,7 +48,7 @@ public final class ConsoleUI {
         if (bankPath != null) {
             return QuestionBank.loadFromFile(Paths.get(bankPath), random);
         }
-        return QuestionBank.loadFromResource("/questions.csv", random);
+        return QuestionBank.loadFromResource("/questions_collected.csv", random);
     }
 
     private void printBanner() {

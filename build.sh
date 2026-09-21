@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
-# Compiles Millionaire Mind into ./out and copies the question bank alongside
-# the compiled classes so it loads as a classpath resource.
+
 set -euo pipefail
+
 cd "$(dirname "$0")"
 
 rm -rf out
-mkdir -p out
-javac -d out $(find src -name "*.java")
-cp resources/questions.csv out/
 
-echo "Build complete. Run with: ./run.sh"
+mkdir -p out
+
+javac -d out $(find src -name "*.java")
+
+cp resources/questions_collected.csv out/
+
+echo "Build complete."
+echo "Run with: ./run.sh"s
