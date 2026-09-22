@@ -7,6 +7,6 @@ cd "$(dirname "$0")"
 rm -rf out
 mkdir -p out
 javac -d out $(find src -name "*.java")
-cp resources/questions.csv out/
+cp "resources/Question Bank.csv" out/questions.csv
 
 echo "Build complete. Run with: ./run.sh"
