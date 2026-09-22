@@ -5,96 +5,288 @@ import java.util.Set;
 import java.util.random.RandomGenerator;
 
 /**
- * Owns game state (current question index, prize ladder position,
- * checkpoints, lifelines used) and enforces the rules in Section 3 of the
- * proposal: 15 questions across six Bloom's tiers, two guaranteed
- * checkpoints (Q5, Q10), drop-to-last-checkpoint on a wrong answer, and
- * walk-away banking.
+ * Owns game state and enforces the game rules.
+ *
+ * Dynamic question behavior:
+ *
+ * 1. A random unused question is selected from
+ *    the required Bloom level.
+ *
+ * 2. QuestionBank shuffles its choices immediately
+ *    after selection.
+ *
+ * 3. Question stores the correct answer by CONTENT,
+ *    so answer checking remains correct after shuffling.
  */
 public final class GameEngine {
 
-    public enum AnswerOutcome { CORRECT, WRONG_DROPPED_TO_CHECKPOINT, WRONG_GAME_OVER }
+    public enum AnswerOutcome {
+        CORRECT,
+        WRONG_DROPPED_TO_CHECKPOINT,
+        WRONG_GAME_OVER
+    }
 
     private final QuestionBank questionBank;
     private final LifelineManager lifelineManager;
     private final PlayerSession session;
-    private final Set<String> usedQuestionIds = new HashSet<>();
 
-    private int currentSlot = 1; // 1-indexed, 1-15
+    private final Set<String> usedQuestionIds =
+            new HashSet<>();
+
+    private final RandomGenerator random;
+
+    private int currentSlot = 1;
+
     private Question currentQuestion;
+
     private boolean gameOver = false;
 
-    public GameEngine(QuestionBank questionBank, RandomGenerator random, String playerName) {
-        this.questionBank = questionBank;
-        this.lifelineManager = new LifelineManager(random);
-        this.session = new PlayerSession(playerName);
+    public GameEngine(
+            QuestionBank questionBank,
+            RandomGenerator random,
+            String playerName
+    ) {
+
+        if (questionBank == null) {
+            throw new IllegalArgumentException(
+                    "Question bank cannot be null."
+            );
+        }
+
+        if (random == null) {
+            throw new IllegalArgumentException(
+                    "Random generator cannot be null."
+            );
+        }
+
+        this.questionBank =
+                questionBank;
+
+        this.random =
+                random;
+
+        this.lifelineManager =
+                new LifelineManager(
+                        random
+                );
+
+        this.session =
+                new PlayerSession(
+                        playerName
+                );
+
         drawCurrentQuestion();
     }
 
+    /**
+     * Selects a random unused question from
+     * the Bloom level assigned to the current slot.
+     *
+     * QuestionBank also shuffles the choices.
+     */
     private void drawCurrentQuestion() {
-        BloomLevel level = BloomLevel.forSlot(currentSlot);
-        this.currentQuestion = questionBank.drawQuestion(level, usedQuestionIds);
-        usedQuestionIds.add(currentQuestion.id());
+
+        BloomLevel level =
+                BloomLevel.forSlot(
+                        currentSlot
+                );
+
+        currentQuestion =
+                questionBank.drawQuestion(
+                        level,
+                        usedQuestionIds
+                );
+
+        usedQuestionIds.add(
+                currentQuestion.id()
+        );
     }
 
-    public int currentSlot() { return currentSlot; }
-    public Question currentQuestion() { return currentQuestion; }
-    public BloomLevel currentLevel() { return BloomLevel.forSlot(currentSlot); }
-    public long currentPrize() { return PrizeLadder.prizeFor(currentSlot); }
-    public long guaranteedBank() { return PrizeLadder.checkpointBankFor(currentSlot - 1); }
-    public boolean isGameOver() { return gameOver; }
-    public LifelineManager lifelines() { return lifelineManager; }
-    public PlayerSession session() { return session; }
-    public QuestionBank questionBank() { return questionBank; }
+    public int currentSlot() {
+        return currentSlot;
+    }
+
+    public Question currentQuestion() {
+        return currentQuestion;
+    }
+
+    public BloomLevel currentLevel() {
+
+        return BloomLevel.forSlot(
+                currentSlot
+        );
+    }
+
+    public long currentPrize() {
+
+        return PrizeLadder.prizeFor(
+                currentSlot
+        );
+    }
+
+    public long guaranteedBank() {
+
+        return PrizeLadder
+                .checkpointBankFor(
+                        currentSlot - 1
+                );
+    }
+
+    public boolean isGameOver() {
+        return gameOver;
+    }
+
+    public LifelineManager lifelines() {
+        return lifelineManager;
+    }
+
+    public PlayerSession session() {
+        return session;
+    }
+
+    public QuestionBank questionBank() {
+        return questionBank;
+    }
 
     /**
-     * Submits an answer for the current question and advances state.
-     * @param chosenIndex 0-based index (0=A, 1=B, 2=C, 3=D)
+     * Submits the currently displayed choice.
+     *
+     * chosenIndex refers to the CURRENT shuffled
+     * order of the options.
      */
-    public AnswerOutcome answer(int chosenIndex) {
-        if (gameOver) throw new IllegalStateException("Game is already over");
-        boolean correct = currentQuestion.isCorrect(chosenIndex);
-        session.recordAnswer(currentSlot, currentQuestion, chosenIndex, correct);
+    public AnswerOutcome answer(
+            int chosenIndex
+    ) {
+
+        if (gameOver) {
+
+            throw new IllegalStateException(
+                    "Game is already over."
+            );
+        }
+
+        boolean correct =
+                currentQuestion.isCorrect(
+                        chosenIndex
+                );
+
+        session.recordAnswer(
+                currentSlot,
+                currentQuestion,
+                chosenIndex,
+                correct
+        );
 
         if (correct) {
-            if (currentSlot == PrizeLadder.totalSlots()) {
-                session.setBankedWinnings(PrizeLadder.prizeFor(currentSlot));
+
+            if (
+                    currentSlot
+                            == PrizeLadder
+                                    .totalSlots()
+            ) {
+
+                session.setBankedWinnings(
+                        PrizeLadder.prizeFor(
+                                currentSlot
+                        )
+                );
+
                 session.markMillionaire();
+
                 gameOver = true;
+
                 return AnswerOutcome.CORRECT;
             }
+
             currentSlot++;
+
             drawCurrentQuestion();
+
             return AnswerOutcome.CORRECT;
-        } else {
-            long banked = PrizeLadder.checkpointBankFor(currentSlot - 1);
-            session.setBankedWinnings(banked);
-            session.markGameOver();
-            gameOver = true;
-            return banked > 0 ? AnswerOutcome.WRONG_DROPPED_TO_CHECKPOINT : AnswerOutcome.WRONG_GAME_OVER;
         }
+
+        long banked =
+                PrizeLadder
+                        .checkpointBankFor(
+                                currentSlot - 1
+                        );
+
+        session.setBankedWinnings(
+                banked
+        );
+
+        session.markGameOver();
+
+        gameOver = true;
+
+        return banked > 0
+                ? AnswerOutcome
+                        .WRONG_DROPPED_TO_CHECKPOINT
+                : AnswerOutcome
+                        .WRONG_GAME_OVER;
     }
 
-    /** Banks current guaranteed winnings and ends the game (Section 3, "Walk Away"). */
+    /**
+     * Walk away from the current game.
+     */
     public void walkAway() {
-        if (gameOver) throw new IllegalStateException("Game is already over");
-        long banked = PrizeLadder.checkpointBankFor(currentSlot - 1);
-        session.setBankedWinnings(banked);
+
+        if (gameOver) {
+
+            throw new IllegalStateException(
+                    "Game is already over."
+            );
+        }
+
+        long banked =
+                PrizeLadder
+                        .checkpointBankFor(
+                                currentSlot - 1
+                        );
+
+        session.setBankedWinnings(
+                banked
+        );
+
         session.markWalkedAway();
+
         gameOver = true;
     }
 
     /**
-     * "Switch the Question" lifeline: discards the current question and
-     * draws another unused one from the same Bloom's level.
+     * Switch the current question with another
+     * unused question from the SAME Bloom level.
+     *
+     * QuestionBank also shuffles the new choices.
      */
     public Question switchQuestion() {
-        if (gameOver) throw new IllegalStateException("Game is already over");
-        lifelineManager.useSwitchQuestion();
-        BloomLevel level = currentLevel();
-        Question replacement = questionBank.drawAlternate(level, usedQuestionIds);
-        usedQuestionIds.add(replacement.id());
-        this.currentQuestion = replacement;
+
+        if (gameOver) {
+
+            throw new IllegalStateException(
+                    "Game is already over."
+            );
+        }
+
+        lifelineManager
+                .useSwitchQuestion();
+
+        BloomLevel level =
+                currentLevel();
+
+        Question replacement =
+                questionBank.drawAlternate(
+                        level,
+                        usedQuestionIds
+                );
+
+        usedQuestionIds.add(
+                replacement.id()
+        );
+
+        currentQuestion =
+                replacement;
+
         return replacement;
     }
 }

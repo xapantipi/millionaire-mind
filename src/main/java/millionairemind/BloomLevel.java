@@ -1,23 +1,57 @@
 package millionairemind;
 
 /**
- * The six cognitive levels of Bloom's Taxonomy that the 15-question ladder
- * is organized around. Each level owns a contiguous range of question slots
- * (1-indexed, inclusive) as defined in the proposal's Section 3.
+ * The six Bloom's Taxonomy levels used by the
+ * 15-question Millionaire Mind ladder.
  */
 public enum BloomLevel {
-    REMEMBERING("Remembering", 1, 2),
-    UNDERSTANDING("Understanding", 3, 5),
-    APPLYING("Applying", 6, 7),
-    ANALYZING("Analyzing", 8, 10),
-    EVALUATING("Evaluating", 11, 13),
-    CREATING("Creating", 14, 15);
+
+    REMEMBERING(
+            "Remembering",
+            1,
+            2
+    ),
+
+    UNDERSTANDING(
+            "Understanding",
+            3,
+            5
+    ),
+
+    APPLYING(
+            "Applying",
+            6,
+            7
+    ),
+
+    ANALYZING(
+            "Analyzing",
+            8,
+            10
+    ),
+
+    EVALUATING(
+            "Evaluating",
+            11,
+            13
+    ),
+
+    CREATING(
+            "Creating",
+            14,
+            15
+    );
 
     private final String displayName;
     private final int startSlot;
     private final int endSlot;
 
-    BloomLevel(String displayName, int startSlot, int endSlot) {
+    BloomLevel(
+            String displayName,
+            int startSlot,
+            int endSlot
+    ) {
+
         this.displayName = displayName;
         this.startSlot = startSlot;
         this.endSlot = endSlot;
@@ -27,18 +61,95 @@ public enum BloomLevel {
         return displayName;
     }
 
-    /** Returns the Bloom's level that owns the given 1-indexed question slot (1-15). */
-    public static BloomLevel forSlot(int slot) {
-        for (BloomLevel level : values()) {
-            if (slot >= level.startSlot && slot <= level.endSlot) {
+    /**
+     * Returns the Bloom level that owns the
+     * specified 1-indexed question slot.
+     */
+    public static BloomLevel forSlot(
+            int slot
+    ) {
+
+        for (
+                BloomLevel level :
+                values()
+        ) {
+
+            if (
+                    slot >= level.startSlot
+                            && slot <= level.endSlot
+            ) {
                 return level;
             }
         }
-        throw new IllegalArgumentException("No Bloom's level owns slot " + slot);
+
+        throw new IllegalArgumentException(
+                "No Bloom's level owns slot "
+                        + slot
+        );
+    }
+
+    /**
+     * Converts the classification stored in
+     * questions_collected.csv into the internal
+     * BloomLevel representation.
+     *
+     * The collected question bank uses "SYNTHESIS"
+     * for the highest level, while the project
+     * proposal uses "Creating".
+     */
+    public static BloomLevel fromCsvValue(
+            String value
+    ) {
+
+        if (
+                value == null
+                        || value.isBlank()
+        ) {
+            throw new IllegalArgumentException(
+                    "Bloom level cannot be blank."
+            );
+        }
+
+        return switch (
+                value
+                        .trim()
+                        .toUpperCase()
+        ) {
+
+            case "REMEMBERING" ->
+                    REMEMBERING;
+
+            case "UNDERSTANDING" ->
+                    UNDERSTANDING;
+
+            case "APPLYING" ->
+                    APPLYING;
+
+            case "ANALYZING" ->
+                    ANALYZING;
+
+            case "EVALUATING" ->
+                    EVALUATING;
+
+            case "CREATING",
+                 "SYNTHESIS" ->
+                    CREATING;
+
+            default ->
+                    throw new IllegalArgumentException(
+                            "Unknown Bloom level: "
+                                    + value
+                    );
+        };
     }
 
     public static int totalSlots() {
-        BloomLevel last = values()[values().length - 1];
+
+        BloomLevel last =
+                values()[
+                        values().length - 1
+                ];
+
         return last.endSlot;
     }
 }

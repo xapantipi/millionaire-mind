@@ -1,0 +1,28 @@
+# Maven
+target/
+
+# Compiled output from the old build scripts
+out/
+
+# Session logs
+logs/*.log
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+
+# Eclipse
+.classpath
+.project
+.settings/
+
+# NetBeans
+nbproject/private/
+nbbuild/
+dist/
+.nb-gradle/
+
+# OS files
+.DS_Store
+Thumbs.db
