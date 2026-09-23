@@ -2,8 +2,10 @@ package millionairemind;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
@@ -29,10 +31,9 @@ public final class ReplayLogger {
      * Writes a full session log and returns the path written to.
      */
     public Path logSession(PlayerSession session) {
-        String stamp = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")
+        String stamp = DateTimeFormatter.ofPattern("yyMMdd-HHmmss")
                 .format(java.time.LocalDateTime.now());
-        String safeName = session.playerName().replaceAll("[^a-zA-Z0-9_-]", "_");
-        Path file = logDirectory.resolve("session-" + safeName + "-" + stamp + ".log");
+        String basename = "replay-" + stamp;
 
         StringBuilder sb = new StringBuilder();
         sb.append("Millionaire Mind - Session Replay Log\n");
@@ -70,12 +71,19 @@ public final class ReplayLogger {
               .append(tally[0]).append("/").append(attempts).append(" correct\n");
         }
 
-        try {
-            Files.writeString(file, sb.toString());
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
+        for (int suffix = 1; ; suffix++) {
+            String filename = basename + (suffix == 1 ? "" : "-" + suffix) + ".log";
+            Path file = logDirectory.resolve(filename);
+            try {
+                Files.writeString(file, sb.toString(),
+                        StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+                return file;
+            } catch (FileAlreadyExistsException e) {
+                // A second session can finish within the same second.
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
         }
-        return file;
     }
 
     private static String indexLetter(int index) {
