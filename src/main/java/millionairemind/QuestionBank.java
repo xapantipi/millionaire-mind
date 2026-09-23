@@ -3,14 +3,15 @@ package millionairemind;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.BufferedReader;
+import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.random.RandomGenerator;
@@ -23,10 +24,14 @@ import java.util.random.RandomGenerator;
  * Expected CSV columns (header row required):
  * id,level,prompt,optionA,optionB,optionC,optionD,correctIndex,hint,sourceReading,pageNumber
  *
- * Fields containing commas or quotes must be wrapped in double quotes, with
- * embedded quotes doubled ("" ), matching standard CSV quoting.
+ * Fields containing commas, quotes, or line breaks must be wrapped in double
+ * quotes, with embedded quotes doubled (""), matching standard CSV quoting.
  */
 public final class QuestionBank {
+
+    private static final List<String> EXPECTED_HEADER = List.of(
+            "id", "level", "prompt", "optionA", "optionB", "optionC", "optionD",
+            "correctIndex", "hint", "sourceReading", "pageNumber");
 
     private final Map<BloomLevel, List<Question>> byLevel = new EnumMap<>(BloomLevel.class);
     private final RandomGenerator random;
@@ -45,7 +50,7 @@ public final class QuestionBank {
             if (in == null) {
                 throw new IOException("Question bank resource not found: " + resourcePath);
             }
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+            try (Reader reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
                 bank.parse(reader);
             }
         }
@@ -55,71 +60,132 @@ public final class QuestionBank {
     /** Loads from a plain filesystem path. */
     public static QuestionBank loadFromFile(Path path, RandomGenerator random) throws IOException {
         QuestionBank bank = new QuestionBank(random);
-        try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
+        try (Reader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
             bank.parse(reader);
         }
         return bank;
     }
 
-    private void parse(BufferedReader reader) throws IOException {
-        String header = reader.readLine();
+    private void parse(Reader reader) throws IOException {
+        String csv = readAll(reader);
+        if (!csv.isEmpty() && csv.charAt(0) == '\uFEFF') {
+            csv = csv.substring(1);
+        }
+
+        CsvRecordReader records = new CsvRecordReader(csv);
+        CsvRecord header = readNextNonBlankRecord(records);
         if (header == null) {
             throw new IOException("Question bank file is empty");
         }
-        String line;
-        int lineNo = 1;
-        while ((line = reader.readLine()) != null) {
-            lineNo++;
-            if (line.isBlank()) continue;
-            List<String> fields = parseCsvLine(line);
-            if (fields.size() != 11) {
-                throw new IOException("Line " + lineNo + " has " + fields.size() + " fields, expected 11");
-            }
-            String id = fields.get(0).trim();
-            BloomLevel level = BloomLevel.valueOf(fields.get(1).trim().toUpperCase());
-            String prompt = fields.get(2);
-            List<String> options = Arrays.asList(fields.get(3), fields.get(4), fields.get(5), fields.get(6));
-            int correctIndex = Integer.parseInt(fields.get(7).trim());
-            String hint = fields.get(8);
-            String sourceReading = fields.get(9);
-            String pageNumber = fields.get(10);
 
-            Question q = new Question(id, level, prompt, options, correctIndex, hint, sourceReading, pageNumber);
-            byLevel.get(level).add(q);
+        if (!EXPECTED_HEADER.equals(header.fields())) {
+            throw invalidRecord(header, "header must be " + String.join(",", EXPECTED_HEADER));
+        }
+
+        Set<String> ids = new HashSet<>();
+        CsvRecord record;
+        while ((record = records.readRecord()) != null) {
+            if (record.isBlank()) {
+                continue;
+            }
+            parseQuestion(record, ids);
+        }
+
+        validateMinimumQuestionCounts();
+    }
+
+    private void parseQuestion(CsvRecord record, Set<String> ids) throws IOException {
+        List<String> fields = record.fields();
+        if (fields.size() != EXPECTED_HEADER.size()) {
+            throw invalidRecord(record, "has " + fields.size() + " fields, expected " + EXPECTED_HEADER.size());
+        }
+
+        String id = requiredField(record, fields, 0, "id").trim();
+        if (!ids.add(id)) {
+            throw invalidRecord(record, "duplicate id '" + id + "'");
+        }
+
+        String levelText = requiredField(record, fields, 1, "level").trim();
+        BloomLevel level;
+        try {
+            level = BloomLevel.valueOf(levelText.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            throw invalidRecord(record, "invalid Bloom level '" + levelText + "'");
+        }
+
+        String prompt = requiredField(record, fields, 2, "prompt");
+        List<String> options = List.of(
+                requiredField(record, fields, 3, "optionA"),
+                requiredField(record, fields, 4, "optionB"),
+                requiredField(record, fields, 5, "optionC"),
+                requiredField(record, fields, 6, "optionD"));
+
+        String correctIndexText = requiredField(record, fields, 7, "correctIndex").trim();
+        int correctIndex;
+        try {
+            correctIndex = Integer.parseInt(correctIndexText);
+        } catch (NumberFormatException e) {
+            throw invalidRecord(record, "correctIndex must be an integer from 0 to 3");
+        }
+        if (correctIndex < 0 || correctIndex > 3) {
+            throw invalidRecord(record, "correctIndex must be from 0 to 3");
+        }
+
+        String hint = requiredField(record, fields, 8, "hint");
+        String sourceReading = requiredField(record, fields, 9, "sourceReading");
+        String pageNumber = requiredField(record, fields, 10, "pageNumber");
+
+        byLevel.get(level).add(new Question(
+                id, level, prompt, options, correctIndex, hint, sourceReading, pageNumber));
+    }
+
+    private static String requiredField(CsvRecord record, List<String> fields,
+                                        int index, String name) throws IOException {
+        String value = fields.get(index);
+        if (value.isBlank()) {
+            throw invalidRecord(record, name + " is required");
+        }
+        return value;
+    }
+
+    private void validateMinimumQuestionCounts() throws IOException {
+        for (BloomLevel level : BloomLevel.values()) {
+            int required = 0;
+            for (int slot = 1; slot <= BloomLevel.totalSlots(); slot++) {
+                if (BloomLevel.forSlot(slot) == level) {
+                    required++;
+                }
+            }
+            int actual = countFor(level);
+            if (actual < required) {
+                throw new IOException("Question bank has " + actual + " question(s) for "
+                        + level.displayName() + "; at least " + required + " required");
+            }
         }
     }
 
-    /** Minimal RFC4180-ish CSV line parser supporting quoted fields with embedded commas/quotes. */
-    private static List<String> parseCsvLine(String line) {
-        List<String> fields = new ArrayList<>();
-        StringBuilder current = new StringBuilder();
-        boolean inQuotes = false;
-        for (int i = 0; i < line.length(); i++) {
-            char c = line.charAt(i);
-            if (inQuotes) {
-                if (c == '"') {
-                    if (i + 1 < line.length() && line.charAt(i + 1) == '"') {
-                        current.append('"');
-                        i++;
-                    } else {
-                        inQuotes = false;
-                    }
-                } else {
-                    current.append(c);
-                }
-            } else {
-                if (c == '"') {
-                    inQuotes = true;
-                } else if (c == ',') {
-                    fields.add(current.toString());
-                    current.setLength(0);
-                } else {
-                    current.append(c);
-                }
+    private static CsvRecord readNextNonBlankRecord(CsvRecordReader records) throws IOException {
+        CsvRecord record;
+        while ((record = records.readRecord()) != null) {
+            if (!record.isBlank()) {
+                return record;
             }
         }
-        fields.add(current.toString());
-        return fields;
+        return null;
+    }
+
+    private static IOException invalidRecord(CsvRecord record, String message) {
+        return new IOException("Question bank record at line " + record.startLine() + ": " + message);
+    }
+
+    private static String readAll(Reader reader) throws IOException {
+        StringBuilder contents = new StringBuilder();
+        char[] buffer = new char[4096];
+        int read;
+        while ((read = reader.read(buffer)) != -1) {
+            contents.append(buffer, 0, read);
+        }
+        return contents.toString();
     }
 
     public int countFor(BloomLevel level) {
@@ -154,5 +220,145 @@ public final class QuestionBank {
      */
     public Question drawAlternate(BloomLevel level, Set<String> excludeSet) {
         return drawQuestion(level, excludeSet);
+    }
+
+    private static final class CsvRecord {
+        private final List<String> fields;
+        private final int startLine;
+        private final boolean containsQuotedField;
+
+        private CsvRecord(List<String> fields, int startLine, boolean containsQuotedField) {
+            this.fields = List.copyOf(fields);
+            this.startLine = startLine;
+            this.containsQuotedField = containsQuotedField;
+        }
+
+        private List<String> fields() {
+            return fields;
+        }
+
+        private int startLine() {
+            return startLine;
+        }
+
+        private boolean isBlank() {
+            return !containsQuotedField && fields.size() == 1 && fields.get(0).isBlank();
+        }
+    }
+
+    /** Reads logical CSV records, so quoted fields may contain commas or line breaks. */
+    private static final class CsvRecordReader {
+        private final String csv;
+        private int position;
+        private int line = 1;
+
+        private CsvRecordReader(String csv) {
+            this.csv = csv;
+        }
+
+        private CsvRecord readRecord() throws IOException {
+            if (position >= csv.length()) {
+                return null;
+            }
+
+            int startLine = line;
+            List<String> fields = new ArrayList<>();
+            StringBuilder current = new StringBuilder();
+            boolean inQuotes = false;
+            boolean afterClosingQuote = false;
+            boolean fieldStarted = false;
+            boolean containsQuotedField = false;
+
+            while (position < csv.length()) {
+                char c = csv.charAt(position);
+
+                if (inQuotes) {
+                    if (c == '"') {
+                        position++;
+                        if (position < csv.length() && csv.charAt(position) == '"') {
+                            current.append('"');
+                            position++;
+                        } else {
+                            inQuotes = false;
+                            afterClosingQuote = true;
+                        }
+                    } else if (c == '\r') {
+                        current.append('\r');
+                        position++;
+                        if (position < csv.length() && csv.charAt(position) == '\n') {
+                            current.append('\n');
+                            position++;
+                        }
+                        line++;
+                    } else if (c == '\n') {
+                        current.append('\n');
+                        position++;
+                        line++;
+                    } else {
+                        current.append(c);
+                        position++;
+                    }
+                    continue;
+                }
+
+                if (afterClosingQuote) {
+                    if (c == ',') {
+                        fields.add(current.toString());
+                        current.setLength(0);
+                        fieldStarted = false;
+                        afterClosingQuote = false;
+                        position++;
+                    } else if (c == '\r' || c == '\n') {
+                        fields.add(current.toString());
+                        finishRecord(c);
+                        return new CsvRecord(fields, startLine, containsQuotedField);
+                    } else {
+                        throw new IOException("Malformed CSV record at line " + startLine
+                                + ": unexpected character after closing quote");
+                    }
+                    continue;
+                }
+
+                if (c == '"') {
+                    if (fieldStarted) {
+                        throw new IOException("Malformed CSV record at line " + startLine
+                                + ": quote inside an unquoted field");
+                    }
+                    inQuotes = true;
+                    fieldStarted = true;
+                    containsQuotedField = true;
+                    position++;
+                } else if (c == ',') {
+                    fields.add(current.toString());
+                    current.setLength(0);
+                    fieldStarted = false;
+                    position++;
+                } else if (c == '\r' || c == '\n') {
+                    fields.add(current.toString());
+                    finishRecord(c);
+                    return new CsvRecord(fields, startLine, containsQuotedField);
+                } else {
+                    current.append(c);
+                    fieldStarted = true;
+                    position++;
+                }
+            }
+
+            if (inQuotes) {
+                throw new IOException("Malformed CSV record at line " + startLine
+                        + ": unterminated quoted field");
+            }
+
+            fields.add(current.toString());
+            return new CsvRecord(fields, startLine, containsQuotedField);
+        }
+
+        private void finishRecord(char lineEnding) {
+            position++;
+            if (lineEnding == '\r' && position < csv.length() && csv.charAt(position) == '\n') {
+                position++;
+            }
+            line++;
+        }
     }
 }

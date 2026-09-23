@@ -14,17 +14,17 @@ architecture in the team proposal (Section 6).
 
 ```bash
 ./build.sh      # compiles to ./out and copies the question bank alongside it
-./run.sh        # plays with the bundled bank (resources/questions.csv)
+./run.sh        # plays with the official bank (resources/Question Bank.csv)
 
 # or, to try a different/expanded question bank file:
-./run.sh path/to/other-questions.csv
+./run.sh "path/to/other-questions.csv"
 ```
 
 Manually, without the scripts:
 
 ```bash
 javac -d out $(find src -name "*.java")
-cp resources/questions.csv out/
+cp "resources/Question Bank.csv" out/questions.csv
 java -cp out millionairemind.ConsoleUI
 ```
 
@@ -45,7 +45,7 @@ src/main/java/millionairemind/
   ConsoleUI.java          Thin console presentation layer (talks only to GameEngine)
 
 resources/
-  questions.csv           The compiled question bank (see format below)
+  Question Bank.csv       Official source question bank (see format below)
 ```
 
 This mirrors the "Backend Architecture (Java)" section of the proposal
@@ -56,7 +56,7 @@ logs, and `ConsoleUI` is a thin layer that talks solely to `GameEngine`.
 Swapping in a Swing/JavaFX `GameUI` later means writing a new class against
 the same `GameEngine` API -- nothing above the UI layer needs to change.
 
-## Question bank format (`resources/questions.csv`)
+## Question bank format (`resources/Question Bank.csv`)
 
 One header row, then one row per question:
 
@@ -72,18 +72,16 @@ id,level,prompt,optionA,optionB,optionC,optionD,correctIndex,hint,sourceReading,
   citation, per the proposal's "Source Citation on Every Question" feature.
 - Wrap any field containing a comma or quote in double quotes (standard
   CSV quoting, `""` for an embedded quote).
+- Quoted fields may contain line breaks, so one CSV record is not necessarily
+  one physical text line. The loader validates the header and all records
+  before gameplay, including IDs, Bloom levels, options, answer indexes,
+  source information, and the minimum questions needed for the 15 slots.
 
-**The bundled `questions.csv` ships 30 placeholder questions (5 per
-Bloom's level) covering common AI-fundamentals topics (supervised vs.
-unsupervised learning, overfitting, bias, NLP/computer vision, evaluation
-metrics, etc.), each with an invented `"AI Fundamentals Course Packet"`
-citation.** Per Section 4 of the proposal, replace these with each team
-member's own six hand-authored, source-cited questions (one per Bloom's
-level) drawn from your actual assigned readings -- just keep the same 11
-columns and 4-option format. The engine doesn't care how many questions
-sit in a level's pool beyond the 2 (or more) needed per playthrough; more
-rows per level just means more variety across replays, per the
-"Randomized Draw Within Each Level" feature.
+The official `Question Bank.csv` is the editable source file. Keep adding
+source-cited questions from the assigned readings using the same 11 columns
+and four-option format. The loader requires enough questions for every slot
+in the 15-question game; additional questions provide more variety between
+playthroughs.
 
 ## Gameplay rules implemented
 

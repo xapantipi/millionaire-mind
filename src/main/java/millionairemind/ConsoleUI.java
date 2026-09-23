@@ -110,7 +110,6 @@ public final class ConsoleUI {
         boolean bonusTimeGranted = false;
 
         while (!engine.isGameOver()) {
-            optionMask = new boolean[]{true, true, true, true};
             Question q = engine.currentQuestion();
             printQuestionScreen(engine, q, optionMask);
 
@@ -142,6 +141,7 @@ public final class ConsoleUI {
                     Question replacement = engine.switchQuestion();
                     System.out.println("\n[Switch the Question] New question drawn from the same level.");
                     q = replacement;
+                    optionMask = new boolean[]{true, true, true, true};
                     printOptions(q, optionMask);
                 } else {
                     System.out.println("Switch the Question already used.");
@@ -187,6 +187,9 @@ public final class ConsoleUI {
 
             GameEngine.AnswerOutcome outcome = engine.answer(chosen);
             handleOutcome(engine, q, chosen, outcome);
+            if (!engine.isGameOver()) {
+                optionMask = new boolean[]{true, true, true, true};
+            }
         }
 
         showResultsScreen(engine);
@@ -291,10 +294,14 @@ public final class ConsoleUI {
             String line = String.format("  %-14s %d/%d correct", level.displayName(), tally[0], attempts);
             System.out.println(line);
         }
-        BloomLevel strongest = session.strongestLevel();
-        BloomLevel weakest = session.weakestLevel();
-        if (strongest != null) System.out.println("Strongest level: " + strongest.displayName());
-        if (weakest != null) System.out.println("Weakest level:   " + weakest.displayName());
+        if (session.becameMillionaire()) {
+            System.out.println("All Bloom levels tied at 100%; no unique strongest or weakest.");
+        } else {
+            BloomLevel strongest = session.strongestLevel();
+            BloomLevel weakest = session.weakestLevel();
+            if (strongest != null) System.out.println("Strongest level: " + strongest.displayName());
+            if (weakest != null) System.out.println("Weakest level:   " + weakest.displayName());
+        }
         System.out.println(DIVIDER);
     }
 
