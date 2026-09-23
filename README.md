@@ -51,7 +51,7 @@ mvn compile exec:java
 To use a different question bank, pass its path as the first argument:
 
 ```bash
-mvn compile exec:java -Dexec.args="path/to/questions.csv"
+mvn compile exec:java -Dexec.args="path/to/other-questions.csv"
 ```
 
 The repository also contains `build.sh` and `run.sh` as legacy helpers for the
@@ -77,7 +77,7 @@ src/main/java/millionairemind/
     screens/            Title, instructions, and play screens
 
 resources/
-  questions.csv         Bundled question bank
+  Question Bank.csv     Official source question bank (see format below)
   millionairemind/
     gui/game.css        JavaFX theme
 ```
@@ -98,13 +98,14 @@ game rules reusable while the JavaFX screens continue to evolve.
   **50:50**, **Spin the Wheel**, **Switch the Question**, and
   **Phone a Friend**
 - Questions are randomly selected from the unused questions in their Bloom's
-  level
+  level, and each question's four choices are reshuffled every time it is
+  drawn
 - A post-game report shows correct and incorrect answers by level
 - Each session is written to `logs/session-<name>-<timestamp>.log`
 
 ## Question bank format
 
-The bundled file is [`resources/questions.csv`](C:/Users/AARB/millionaire-mind_copy/resources/questions.csv).
+The bundled file is [`resources/Question Bank.csv`](C:/Users/AARB/millionaire-mind_copy/resources/Question Bank.csv).
 It contains one header row followed by one question per row:
 
 ```text
@@ -113,11 +114,18 @@ id,level,prompt,optionA,optionB,optionC,optionD,correctIndex,hint,sourceReading,
 
 - `level` must be one of `REMEMBERING`, `UNDERSTANDING`, `APPLYING`,
   `ANALYZING`, `EVALUATING`, or `CREATING`
-- `correctIndex` is zero-based: `0=A`, `1=B`, `2=C`, `3=D`
+- `correctIndex` is zero-based: `0=A`, `1=B`, `2=C`, `3=D`. The loader
+  resolves this to the answer's text at load time, so shuffling a question's
+  displayed choices never changes which one is graded as correct.
 - `hint` is revealed by **Phone a Friend**
 - `sourceReading` and `pageNumber` provide the citation shown after an answer
 - Fields containing commas or quotes must use standard CSV quoting; represent
   an embedded quote as `""`
+- Quoted fields may contain line breaks, so one CSV record is not necessarily
+  one physical text line
+- The loader validates the header and every record before gameplay starts
+  (ids, Bloom levels, options, answer indexes, source info) and enforces the
+  minimum number of questions needed to cover all 15 slots per Bloom's level
 
 Add more questions to a level to increase variety between playthroughs. Keep
 the same 11 columns and four-option format.

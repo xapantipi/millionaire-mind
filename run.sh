@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs Millionaire Mind. Optionally pass a path to an alternate question
-# bank CSV as the first argument, e.g. ./run.sh resources/questions.csv
+# bank CSV as the first argument, e.g. ./run.sh "resources/Question Bank.csv"
 set -euo pipefail
 cd "$(dirname "$0")"
 
