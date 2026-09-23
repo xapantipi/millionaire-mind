@@ -10,7 +10,7 @@ mkdir -p out
 
 javac -d out $(find src -name "*.java")
 
-cp resources/questions_collected.csv out/
+cp "resources/Question Bank.csv" out/
 
 echo "Build complete."
-echo "Run with: ./run.sh"s
+echo "Run with: ./run.sh"

@@ -90,10 +90,10 @@ public enum BloomLevel {
 
     /**
      * Converts the classification stored in
-     * questions_collected.csv into the internal
+     * the question bank CSV into the internal
      * BloomLevel representation.
      *
-     * The collected question bank uses "SYNTHESIS"
+     * Some question banks use "SYNTHESIS"
      * for the highest level, while the project
      * proposal uses "Creating".
      */
