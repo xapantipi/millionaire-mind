@@ -1,6 +1,9 @@
 package millionairemind;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.random.RandomGenerator;
 
 /**
  * A single, source-cited multiple-choice question tagged with a Bloom's
@@ -47,6 +50,26 @@ public final class Question {
 
     public boolean isCorrect(int chosenIndex) {
         return chosenIndex == correctIndex;
+    }
+
+    /**
+     * Returns a copy of this question with its four options presented in a
+     * random order, so the correct choice is not always tied to the slot the
+     * CSV happened to declare it in (proposal requirement: choice order must
+     * be dynamic, not just question selection). The correct option's text
+     * travels with it, so {@link #correctIndex()} and {@link #isCorrect(int)}
+     * on the returned copy stay accurate for whatever position it lands on.
+     */
+    public Question shuffledOptions(RandomGenerator random) {
+        List<String> newOptions = new ArrayList<>(options);
+        List<Integer> originalIndices = new ArrayList<>(List.of(0, 1, 2, 3));
+        for (int i = newOptions.size() - 1; i > 0; i--) {
+            int j = random.nextInt(i + 1);
+            Collections.swap(newOptions, i, j);
+            Collections.swap(originalIndices, i, j);
+        }
+        int newCorrectIndex = originalIndices.indexOf(correctIndex);
+        return new Question(id, level, prompt, newOptions, newCorrectIndex, hint, sourceReading, pageNumber);
     }
 
     public String citation() {

@@ -2,6 +2,7 @@ package millionairemind;
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Random;
 import java.util.Set;
 import java.util.random.RandomGenerator;
 
@@ -21,6 +22,7 @@ public final class GameEngine {
     private final PlayerSession session;
     private final Set<String> usedQuestionIds = new HashSet<>();
     private final boolean[] visibleOptions = new boolean[4];
+    private final RandomGenerator choiceShuffleRandom;
 
     private int currentSlot = 1; // 1-indexed, 1-15
     private Question currentQuestion;
@@ -30,14 +32,19 @@ public final class GameEngine {
         this.questionBank = questionBank;
         this.lifelineManager = new LifelineManager(random);
         this.session = new PlayerSession(playerName);
+        // A dedicated, independently-seeded generator so shuffling choice
+        // order never shares (and skews) the exact random draws that the
+        // lifelines rely on.
+        this.choiceShuffleRandom = new Random(random.nextLong());
         resetVisibleOptions();
         drawCurrentQuestion();
     }
 
     private void drawCurrentQuestion() {
         BloomLevel level = BloomLevel.forSlot(currentSlot);
-        this.currentQuestion = questionBank.drawQuestion(level, usedQuestionIds);
-        usedQuestionIds.add(currentQuestion.id());
+        Question drawn = questionBank.drawQuestion(level, usedQuestionIds);
+        usedQuestionIds.add(drawn.id());
+        this.currentQuestion = drawn.shuffledOptions(choiceShuffleRandom);
     }
 
     public int currentSlot() { return currentSlot; }
@@ -152,8 +159,8 @@ public final class GameEngine {
         BloomLevel level = currentLevel();
         Question replacement = questionBank.drawAlternate(level, usedQuestionIds);
         usedQuestionIds.add(replacement.id());
-        this.currentQuestion = replacement;
+        this.currentQuestion = replacement.shuffledOptions(choiceShuffleRandom);
         resetVisibleOptions();
-        return replacement;
+        return this.currentQuestion;
     }
 }

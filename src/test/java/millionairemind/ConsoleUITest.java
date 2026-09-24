@@ -2,12 +2,15 @@ package millionairemind;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -60,8 +63,10 @@ public final class ConsoleUITest {
     }
 
     private static void perfectWinReportsTheTieInsteadOfStrongestAndWeakest() throws Exception {
-        String scriptedInput = "1\nPerfectPlayer\n" + "A\n".repeat(PrizeLadder.totalSlots()) + "3\n";
-        String output = runConsole(scriptedInput, perfectRunQuestionBank());
+        // Choice order is now shuffled per question, so the correct letter
+        // can no longer be assumed to always be "A"; drive the console
+        // interactively and read each question's own options to find it.
+        String output = runConsoleAnsweringEveryQuestionCorrectly(perfectRunQuestionBank());
 
         BackendTestSupport.check(output.contains("Congrats! You became a MILLIONAIRE!!!"),
                 "answering every fixture question correctly should complete the game");
@@ -121,6 +126,90 @@ public final class ConsoleUITest {
         } finally {
             deleteRecursively(temporaryDirectory);
         }
+    }
+
+    /**
+     * Drives the console interactively, answering each of the 15 questions
+     * with its own correct letter. Since choice order is shuffled per
+     * question, the letter is discovered fresh each time from that
+     * question's freshly-printed options rather than assumed in advance.
+     */
+    private static String runConsoleAnsweringEveryQuestionCorrectly(String questionBankCsv) throws Exception {
+        Path temporaryDirectory = Files.createTempDirectory("millionaire-mind-console-test-");
+        try {
+            Path questionBankFile = temporaryDirectory.resolve("question-bank.csv");
+            Files.writeString(questionBankFile, questionBankCsv, StandardCharsets.UTF_8);
+            String javaExecutable = Path.of(System.getProperty("java.home"), "bin",
+                    isWindows() ? "java.exe" : "java").toString();
+            String classPath = absoluteClassPath();
+            ProcessBuilder processBuilder = new ProcessBuilder(javaExecutable, "-cp", classPath,
+                    "millionairemind.ConsoleUI", questionBankFile.toString());
+            Process process = processBuilder.directory(temporaryDirectory.toFile())
+                    .redirectErrorStream(true).start();
+
+            StringBuilder transcript = new StringBuilder();
+            try (InputStream stdout = process.getInputStream();
+                 OutputStream stdin = process.getOutputStream()) {
+                writeLine(stdin, "1");
+                writeLine(stdin, "PerfectPlayer");
+
+                for (int slot = 1; slot <= PrizeLadder.totalSlots(); slot++) {
+                    String questionScreen = readUntilMarker(stdout, transcript, "Answer (A-D)");
+                    writeLine(stdin, findCorrectAnswerLetter(questionScreen));
+                }
+
+                readUntilMarker(stdout, transcript, "Choose an option");
+                writeLine(stdin, "3");
+                drainRemaining(stdout, transcript);
+            }
+
+            if (!process.waitFor(10, TimeUnit.SECONDS)) {
+                process.destroyForcibly();
+                throw new AssertionError("console game did not finish scripted input");
+            }
+            BackendTestSupport.check(process.exitValue() == 0,
+                    "console game should exit successfully after the scripted run");
+
+            return transcript.toString();
+        } finally {
+            deleteRecursively(temporaryDirectory);
+        }
+    }
+
+    private static void writeLine(OutputStream stdin, String line) throws IOException {
+        stdin.write((line + "\n").getBytes(StandardCharsets.UTF_8));
+        stdin.flush();
+    }
+
+    /** Reads (and appends to the running transcript) until the marker text has just been printed. */
+    private static String readUntilMarker(InputStream stdout, StringBuilder transcript, String marker) throws IOException {
+        StringBuilder chunk = new StringBuilder();
+        int ch;
+        while ((ch = stdout.read()) != -1) {
+            chunk.append((char) ch);
+            transcript.append((char) ch);
+            if (chunk.length() >= marker.length()
+                    && chunk.substring(chunk.length() - marker.length()).equals(marker)) {
+                return chunk.toString();
+            }
+        }
+        throw new AssertionError("console output ended before printing: " + marker);
+    }
+
+    private static void drainRemaining(InputStream stdout, StringBuilder transcript) throws IOException {
+        int ch;
+        while ((ch = stdout.read()) != -1) {
+            transcript.append((char) ch);
+        }
+    }
+
+    /** Finds the letter of whichever option reads "Correct answer" on the freshly-printed question screen. */
+    private static String findCorrectAnswerLetter(String questionScreen) {
+        Matcher matcher = Pattern.compile("(?m)^\\s*([A-D])\\)\\s*Correct answer\\s*$").matcher(questionScreen);
+        if (!matcher.find()) {
+            throw new AssertionError("could not locate the correct-answer option in:\n" + questionScreen);
+        }
+        return matcher.group(1);
     }
 
     private static String perfectRunQuestionBank() {

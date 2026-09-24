@@ -356,7 +356,11 @@ public final class SwingUITest {
                     "the whole long prompt should fit without scrolling: actual="
                             + prompt.getSize() + " preferred=" + prompt.getPreferredSize());
             JPanel grid = find(ui.frame(), "answerGrid", JPanel.class);
-            AbstractButton answer = find(ui.frame(), "answerA", AbstractButton.class);
+            // Choice order is shuffled per question, so the long option (the
+            // fixture's correct answer) may land on any of the four cards;
+            // look it up by the current, possibly-shuffled correct index.
+            String longAnswerName = "answer" + answerLetter(ui.engine().currentQuestion().correctIndex());
+            AbstractButton answer = find(ui.frame(), longAnswerName, AbstractButton.class);
             check(longChoice.equals(answer.getToolTipText()),
                     "the full long answer should remain available");
             check(grid.getPreferredSize().height > 174
@@ -368,7 +372,7 @@ public final class SwingUITest {
                 ui.frame().validate();
                 capture(ui.frame(), longChoicePreview);
             }
-            click(ui, "answerA");
+            click(ui, longAnswerName);
             click(ui, "lockAnswer");
             check(textFullyVisible(find(ui.frame(), "feedbackDetail", JTextArea.class)),
                     "long correct answers and citations should fit in feedback");
