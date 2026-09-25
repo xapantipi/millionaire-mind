@@ -1,0 +1,30 @@
+Millionaire Mind - Session Replay Log
+Player: s
+Ended: 2026-09-25T10:44:07.783826600
+Outcome: Missed a question
+Final winnings: $0
+----------------------------------------
+Question history:
+Q01 [Remembering] (ACT3-Q04) - CORRECT
+  Prompt: Which of these is are part of the formal definition of problem-solving?
+  Chosen: A) All of the above
+  Correct answer: A) All of the above
+  Source: Module 2 / A1_An Introduction to Problem Solving.pdf, p. 1
+Q02 [Remembering] (ACT1-Q07) - CORRECT
+  Prompt: Which of these are the proposed components of human intelligence?
+  Chosen: D) All of the above
+  Correct answer: D) All of the above
+  Source: Module 1 / A1_Intelligence and Other Aids to Problem Solving.pdf, p. 2
+Q03 [Understanding] (ACT5-Q08) - WRONG
+  Prompt: What is the main disadvantage of forward search (data-driven inference) noted in the text?
+  Chosen: D) It cannot explore working memory
+  Correct answer: C) Many rules may be applicable, so the process isn't directed toward a goal
+  Source: Module 3 / A1_The Search Process.pdf, p. 2
+----------------------------------------
+Bloom's report:
+  Remembering: 2/2 correct
+  Understanding: 0/1 correct
+  Applying: 0/0 correct
+  Analyzing: 0/0 correct
+  Evaluating: 0/0 correct
+  Creating: 0/0 correct

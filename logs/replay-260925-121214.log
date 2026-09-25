@@ -1,0 +1,20 @@
+Millionaire Mind - Session Replay Log
+Player: scad
+Ended: 2026-09-25T12:12:14.449427
+Outcome: Missed a question
+Final winnings: $0
+----------------------------------------
+Question history:
+Q01 [Remembering] (ACT3-Q01) - TIMEOUT
+  Prompt: Which of the following correctly lists the four necessary components required to define a formal, well-defined problem in artificial intelligence?
+  Chosen: (no answer — ran out of time)
+  Correct answer: C) Initial state, set of valid operators/actions, goal state test, and path constraints
+  Source: Module 3 / A1_The Search Process.pdf, p. 1
+----------------------------------------
+Bloom's report:
+  Remembering: 0/1 correct
+  Understanding: 0/0 correct
+  Applying: 0/0 correct
+  Analyzing: 0/0 correct
+  Evaluating: 0/0 correct
+  Creating: 0/0 correct

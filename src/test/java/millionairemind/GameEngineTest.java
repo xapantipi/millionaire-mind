@@ -13,6 +13,7 @@ public final class GameEngineTest {
         dropsWrongAnswersToTheLastCheckpoint();
         losesBeforeTheFirstCheckpointAndWalksAwayAtTheCheckpointBank();
         switchesToAnUnusedQuestionAtTheSameLevel();
+        lifelineVisibilityPreservesCombinedAndUntimedBehavior();
         awardsTheMillionAfterFifteenCorrectAnswers();
         System.out.println("GameEngineTest passed");
     }
@@ -132,6 +133,46 @@ public final class GameEngineTest {
                 "a perfect run should bank $1,000,000");
         BackendTestSupport.check(engine.session().history().size() == PrizeLadder.totalSlots(),
                 "the session should contain all 15 answers");
+    }
+
+    private static void lifelineVisibilityPreservesCombinedAndUntimedBehavior() throws Exception {
+        GameEngine combined = new GameEngine(BackendTestSupport.questionBank(),
+                BackendTestSupport.fixedRandom(0.2, 0), "Combined");
+        combined.useFiftyFifty();
+        BackendTestSupport.check(visibleCount(combined) == 2,
+                "50:50 should leave two visible choices");
+        BackendTestSupport.check(combined.useSpinTheWheel()
+                        == LifelineManager.SpinOutcome.REVEAL_ONE_WRONG_OPTION
+                        && visibleCount(combined) == 1,
+                "Spin should remove the remaining wrong option after 50:50");
+        combined.switchQuestion();
+        BackendTestSupport.check(visibleCount(combined) == 4,
+                "switching should restore all choices for the replacement question");
+        BackendTestSupport.check(combined.usePhoneAFriend().equals(combined.currentQuestion().hint()),
+                "Phone a Friend should return the replacement question's hint");
+
+        GameEngine reverseOrder = new GameEngine(BackendTestSupport.questionBank(),
+                BackendTestSupport.fixedRandom(0.2, 0), "Reverse");
+        reverseOrder.useSpinTheWheel();
+        BackendTestSupport.check(visibleCount(reverseOrder) == 3,
+                "reveal-one spin should hide one wrong choice");
+        reverseOrder.useFiftyFifty();
+        BackendTestSupport.check(visibleCount(reverseOrder) == 2
+                        && reverseOrder.isOptionVisible(0),
+                "50:50 after Spin should replace the mask as the console previously did");
+
+        GameEngine untimed = new GameEngine(BackendTestSupport.questionBank(),
+                BackendTestSupport.fixedRandom(0.9, 0), "Untimed");
+        BackendTestSupport.check(untimed.useSpinTheWheel()
+                        == LifelineManager.SpinOutcome.GRANT_BONUS_TIME
+                        && visibleCount(untimed) == 4,
+                "bonus time should leave choices unchanged in untimed play");
+    }
+
+    private static int visibleCount(GameEngine engine) {
+        int count = 0;
+        for (int i = 0; i < 4; i++) if (engine.isOptionVisible(i)) count++;
+        return count;
     }
 
     private static void answerCorrectlyThrough(GameEngine engine, int slotCount) {

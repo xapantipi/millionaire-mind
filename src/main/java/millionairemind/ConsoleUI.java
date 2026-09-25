@@ -106,12 +106,10 @@ public final class ConsoleUI {
         if (name.isEmpty()) name = "Player";
 
         GameEngine engine = new GameEngine(questionBank, random, name);
-        boolean[] optionMask = {true, true, true, true};
-        boolean bonusTimeGranted = false;
 
         while (!engine.isGameOver()) {
             Question q = engine.currentQuestion();
-            printQuestionScreen(engine, q, optionMask);
+            printQuestionScreen(engine, q);
 
             String action = promptAction(engine);
             if (action.equalsIgnoreCase("W")) {
@@ -119,18 +117,16 @@ public final class ConsoleUI {
                 break;
             } else if (action.equalsIgnoreCase("5")) {
                 if (engine.lifelines().isAvailable(LifelineManager.Lifeline.FIFTY_FIFTY)) {
-                    int[] kept = engine.lifelines().fiftyFifty(q);
-                    optionMask = new boolean[]{false, false, false, false};
-                    for (int idx : kept) optionMask[idx] = true;
+                    engine.useFiftyFifty();
                     System.out.println("\n[50:50] Two incorrect options removed.");
-                    printOptions(q, optionMask);
+                    printOptions(engine, q);
                 } else {
                     System.out.println("50:50 already used.");
                 }
                 continue;
             } else if (action.equalsIgnoreCase("P")) {
                 if (engine.lifelines().isAvailable(LifelineManager.Lifeline.PHONE_A_FRIEND)) {
-                    String hint = engine.lifelines().phoneAFriend(q);
+                    String hint = engine.usePhoneAFriend();
                     System.out.println("\n[Phone a Friend] HINT: " + hint);
                 } else {
                     System.out.println("Phone a Friend already used.");
@@ -141,45 +137,33 @@ public final class ConsoleUI {
                     Question replacement = engine.switchQuestion();
                     System.out.println("\n[Switch the Question] New question drawn from the same level.");
                     q = replacement;
-                    optionMask = new boolean[]{true, true, true, true};
-                    printOptions(q, optionMask);
+                    printOptions(engine, q);
                 } else {
                     System.out.println("Switch the Question already used.");
                 }
                 continue;
             } else if (action.equalsIgnoreCase("V")) {
                 if (engine.lifelines().isAvailable(LifelineManager.Lifeline.SPIN_THE_WHEEL)) {
-                    LifelineManager.SpinOutcome outcome = engine.lifelines().spinTheWheel();
+                    LifelineManager.SpinOutcome outcome = engine.useSpinTheWheel();
                     switch (outcome) {
                         case REVEAL_ONE_WRONG_OPTION -> {
-                            int idx = firstWrongVisible(q, optionMask);
-                            if (idx >= 0) optionMask[idx] = false;
                             System.out.println("\n[Spin the Wheel] Landed on: reveal one wrong option removed.");
                         }
                         case REDUCE_TWO_OPTIONS -> {
-                            int correct = q.correctIndex();
-                            int kept = correct;
-                            for (int i = 0; i < 4; i++) {
-                                if (i != correct && optionMask[i]) { kept = i; break; }
-                            }
-                            optionMask = new boolean[]{false, false, false, false};
-                            optionMask[correct] = true;
-                            optionMask[kept] = true;
                             System.out.println("\n[Spin the Wheel] Landed on: down to two options.");
                         }
                         case GRANT_BONUS_TIME -> {
-                            bonusTimeGranted = true;
                             System.out.println("\n[Spin the Wheel] Landed on: +30 bonus seconds (timer mode).");
                         }
                     }
-                    printOptions(q, optionMask);
+                    printOptions(engine, q);
                 } else {
                     System.out.println("Spin the Wheel already used.");
                 }
                 continue;
             }
 
-            int chosen = parseOptionLetter(action, optionMask);
+            int chosen = parseOptionLetter(action, engine);
             if (chosen < 0) {
                 System.out.println("Enter A-D, or a lifeline / walk-away letter.");
                 continue;
@@ -187,9 +171,6 @@ public final class ConsoleUI {
 
             GameEngine.AnswerOutcome outcome = engine.answer(chosen);
             handleOutcome(engine, q, chosen, outcome);
-            if (!engine.isGameOver()) {
-                optionMask = new boolean[]{true, true, true, true};
-            }
         }
 
         showResultsScreen(engine);
@@ -197,14 +178,7 @@ public final class ConsoleUI {
         System.out.println("Session log saved to: " + logPath.toAbsolutePath());
     }
 
-    private int firstWrongVisible(Question q, boolean[] mask) {
-        for (int i = 0; i < 4; i++) {
-            if (mask[i] && i != q.correctIndex()) return i;
-        }
-        return -1;
-    }
-
-    private void printQuestionScreen(GameEngine engine, Question q, boolean[] mask) {
+    private void printQuestionScreen(GameEngine engine, Question q) {
         System.out.println();
         System.out.println(DIVIDER);
         System.out.printf(Locale.US, "Question %d/%d  |  Tier: %s  |  Prize: $%,d  |  Banked if wrong now: $%,d%n",
@@ -215,16 +189,16 @@ public final class ConsoleUI {
         }
         System.out.println(DIVIDER);
         System.out.println(q.prompt());
-        printOptions(q, mask);
+        printOptions(engine, q);
         System.out.println();
         System.out.println("Lifelines remaining: " + describeLifelines(engine));
     }
 
-    private void printOptions(Question q, boolean[] mask) {
+    private void printOptions(GameEngine engine, Question q) {
         List<String> opts = q.options();
         for (int i = 0; i < 4; i++) {
             char letter = (char) ('A' + i);
-            if (mask[i]) {
+            if (engine.isOptionVisible(i)) {
                 System.out.printf("  %c) %s%n", letter, opts.get(i));
             } else {
                 System.out.printf("  %c) [removed]%n", letter);
@@ -246,12 +220,12 @@ public final class ConsoleUI {
         return prompt("Answer (A-D), lifeline (5/V/S/P), or Walk Away (W): ");
     }
 
-    private int parseOptionLetter(String input, boolean[] mask) {
+    private int parseOptionLetter(String input, GameEngine engine) {
         if (input == null || input.length() != 1) return -1;
         char c = Character.toUpperCase(input.charAt(0));
         if (c < 'A' || c > 'D') return -1;
         int idx = c - 'A';
-        if (!mask[idx]) {
+        if (!engine.isOptionVisible(idx)) {
             System.out.println("That option was removed by a lifeline. Choose a remaining one.");
             return -1;
         }

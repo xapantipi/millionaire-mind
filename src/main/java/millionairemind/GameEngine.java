@@ -1,5 +1,6 @@
 package millionairemind;
 
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.random.RandomGenerator;
@@ -13,21 +14,29 @@ import java.util.random.RandomGenerator;
  */
 public final class GameEngine {
 
-    public enum AnswerOutcome { CORRECT, WRONG_DROPPED_TO_CHECKPOINT, WRONG_GAME_OVER }
+    public enum AnswerOutcome { CORRECT, WRONG_DROPPED_TO_CHECKPOINT, WRONG_GAME_OVER, TIMEOUT_DROPPED_TO_CHECKPOINT, TIMEOUT_GAME_OVER }
+    
+    public static final int TIMER_SECONDS = 30;
+    public static final int BONUS_TIME_SECONDS = 15;
 
     private final QuestionBank questionBank;
     private final LifelineManager lifelineManager;
     private final PlayerSession session;
     private final Set<String> usedQuestionIds = new HashSet<>();
+    private final boolean[] visibleOptions = new boolean[4];
+    private final boolean timedMode;
 
     private int currentSlot = 1; // 1-indexed, 1-15
     private Question currentQuestion;
+
     private boolean gameOver = false;
 
-    public GameEngine(QuestionBank questionBank, RandomGenerator random, String playerName) {
+    public GameEngine(QuestionBank questionBank, RandomGenerator random, String playerName, boolean timedMode) {
         this.questionBank = questionBank;
         this.lifelineManager = new LifelineManager(random);
         this.session = new PlayerSession(playerName);
+        this.timedMode = timedMode;
+        resetVisibleOptions();
         drawCurrentQuestion();
     }
 
@@ -46,6 +55,61 @@ public final class GameEngine {
     public LifelineManager lifelines() { return lifelineManager; }
     public PlayerSession session() { return session; }
     public QuestionBank questionBank() { return questionBank; }
+    public boolean isTimedMode() { return timedMode; }
+
+    public boolean isOptionVisible(int index) { return visibleOptions[index]; }
+
+    /** 50:50 replaces the current option mask, matching the console behavior. */
+    public void useFiftyFifty() {
+        ensureActive();
+        int[] kept = lifelineManager.fiftyFifty(currentQuestion);
+        Arrays.fill(visibleOptions, false);
+        for (int index : kept) visibleOptions[index] = true;
+    }
+
+    /** Applies the visual option effect; bonus time has no effect in untimed play. */
+    public LifelineManager.SpinOutcome useSpinTheWheel() {
+        ensureActive();
+        LifelineManager.SpinOutcome outcome = lifelineManager.spinTheWheel();
+        switch (outcome) {
+            case REVEAL_ONE_WRONG_OPTION -> {
+                for (int i = 0; i < visibleOptions.length; i++) {
+                    if (visibleOptions[i] && i != currentQuestion.correctIndex()) {
+                        visibleOptions[i] = false;
+                        break;
+                    }
+                }
+            }
+            case REDUCE_TWO_OPTIONS -> {
+                int correct = currentQuestion.correctIndex();
+                int kept = correct;
+                for (int i = 0; i < visibleOptions.length; i++) {
+                    if (i != correct && visibleOptions[i]) {
+                        kept = i;
+                        break;
+                    }
+                }
+                Arrays.fill(visibleOptions, false);
+                visibleOptions[correct] = true;
+                visibleOptions[kept] = true;
+            }
+            case GRANT_BONUS_TIME -> { /* Timer mode is not active. */ }
+        }
+        return outcome;
+    }
+
+    public String usePhoneAFriend() {
+        ensureActive();
+        return lifelineManager.phoneAFriend(currentQuestion);
+    }
+
+    private void resetVisibleOptions() {
+        Arrays.fill(visibleOptions, true);
+    }
+
+    private void ensureActive() {
+        if (gameOver) throw new IllegalStateException("Game is already over");
+    }
 
     /**
      * Submits an answer for the current question and advances state.
@@ -65,6 +129,7 @@ public final class GameEngine {
             }
             currentSlot++;
             drawCurrentQuestion();
+            resetVisibleOptions();
             return AnswerOutcome.CORRECT;
         } else {
             long banked = PrizeLadder.checkpointBankFor(currentSlot - 1);
@@ -73,6 +138,16 @@ public final class GameEngine {
             gameOver = true;
             return banked > 0 ? AnswerOutcome.WRONG_DROPPED_TO_CHECKPOINT : AnswerOutcome.WRONG_GAME_OVER;
         }
+    }
+
+    public AnswerOutcome timeExpired() {
+        if (gameOver) throw new IllegalStateException("Game is already over");
+        session.recordAnswer(currentSlot, currentQuestion, -1, false);
+        long banked = PrizeLadder.checkpointBankFor(currentSlot - 1);
+        session.setBankedWinnings(banked);
+        session.markGameOver();
+        gameOver = true;
+        return banked > 0 ? AnswerOutcome.TIMEOUT_DROPPED_TO_CHECKPOINT : AnswerOutcome.TIMEOUT_GAME_OVER;
     }
 
     /** Banks current guaranteed winnings and ends the game (Section 3, "Walk Away"). */
@@ -95,6 +170,7 @@ public final class GameEngine {
         Question replacement = questionBank.drawAlternate(level, usedQuestionIds);
         usedQuestionIds.add(replacement.id());
         this.currentQuestion = replacement;
+        resetVisibleOptions();
         return replacement;
     }
 }

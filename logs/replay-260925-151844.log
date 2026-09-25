@@ -1,0 +1,20 @@
+Millionaire Mind - Session Replay Log
+Player: Nyko
+Ended: 2026-09-25T15:18:44.954781200
+Outcome: Missed a question
+Final winnings: $0
+----------------------------------------
+Question history:
+Q01 [Remembering] (ACT5-Q01) - WRONG
+  Prompt: If you're deciding to use a Breadth-First Search (BFS) for a problem, what is the biggest trade-off you need to watch out?
+  Chosen: A) It can get easily stuck on an infinite loop on the left side of the tree.
+  Correct answer: C) It uses computer memory very quickly because it saves each level of the tree.
+  Source: Module 3 / A1_The Search Process.pdf, p. 6
+----------------------------------------
+Bloom's report:
+  Remembering: 0/1 correct
+  Understanding: 0/0 correct
+  Applying: 0/0 correct
+  Analyzing: 0/0 correct
+  Evaluating: 0/0 correct
+  Creating: 0/0 correct
