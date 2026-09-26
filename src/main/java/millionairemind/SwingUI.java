@@ -1,5 +1,6 @@
 package millionairemind;
 
+import java.awt.AlphaComposite;
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
@@ -13,16 +14,26 @@ import java.awt.FontMetrics;
 import java.awt.GradientPaint;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
+import java.awt.Image;
+import java.awt.Rectangle;
 import java.awt.RenderingHints;
-import java.awt.Toolkit;
-import java.awt.geom.Path2D;
-import java.awt.event.KeyEvent;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.awt.geom.Path2D;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -31,10 +42,22 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.random.RandomGenerator;
 import java.util.random.RandomGeneratorFactory;
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
+import javax.sound.sampled.FloatControl;
+import javax.sound.sampled.LineEvent;
+import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.UnsupportedAudioFileException;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.AbstractAction;
+import javax.swing.ActionMap;
 import javax.swing.ButtonGroup;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -43,18 +66,13 @@ import javax.swing.JTextField;
 import javax.swing.JToggleButton;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
+import javax.swing.InputMap;
+import javax.swing.KeyStroke;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.text.View;
-import javax.swing.Timer;
-import java.awt.AlphaComposite;
-import java.awt.Image;
-import javax.swing.ImageIcon;
-import java.net.URL;
-import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.Clip;
 
 /** A separate, untimed Swing presentation for the existing game engine. */
 public final class SwingUI {
@@ -84,7 +102,7 @@ public final class SwingUI {
     private final JPanel answerGrid = new JPanel();
     private final JPanel[] answerRows = new JPanel[2];
     private JPanel questionBody;
-    private final JButton[] lifelineButtons = new JButton[4];
+    private final StyledButton[] lifelineButtons = new StyledButton[4];
     private final JPanel ladderRows = new JPanel();
     private final JTextArea promptText = textArea(25, true);
     private JPanel promptBox;
@@ -116,8 +134,21 @@ public final class SwingUI {
     private JButton menuPlayButton;
     private JButton startButton;
     private JPanel resultsPage;
+    private Clip backgroundMusic;
+    private Clip splashAudio;
+    private SplashOverlay splashOverlay;
+    private Timer splashHoldTimer;
+    private Timer splashFadeTimer;
+    private boolean splashFading;
     private static final int SPLASH_HOLD_MS = 20000;
     private static final int SPLASH_FADE_MS = 600;
+    private static final float BACKGROUND_MUSIC_LEVEL = 0.30f;
+    private static final float BUTTON_SFX_GAIN_DB = 3.0f;
+    private static final String SFX_PROGRESS = "niera_sound_5.wav";
+    private static final String SFX_BACK = "niera_sound_2.wav";
+    private static final String SFX_ANSWER_SELECT = "select_005.wav";
+    private static final String SFX_CORRECT_ANSWER = "confirmation_004.wav";
+    private static final String SFX_ACTION_ERROR = "error_006.wav";
 
     private Image splashImage;
 
@@ -152,15 +183,35 @@ public final class SwingUI {
         root.add(buildGameScreen(), "game");
         root.add(buildFeedbackScreen(), "feedback");
         frame.setContentPane(root);
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
-        int usableWidth = screen.width - 48;
-        int usableHeight = screen.height - 64;
-        frame.setMinimumSize(new Dimension(Math.min(1400, usableWidth),
-                Math.min(900, usableHeight)));
-        frame.setSize(Math.min(1650, usableWidth), Math.min(960, usableHeight));
-        frame.setLocationRelativeTo(null);
+        frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+        frame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent event) {
+                exitApplication();
+            }
+        });
+        Runtime.getRuntime().addShutdownHook(new Thread(this::stopBackgroundMusic, "bg-music-shutdown"));
+        applyFullScreenBounds();
         showMainMenu();
+    }
+
+    // Fills the whole display so the window always matches the current screen's
+    // resolution instead of a fixed pixel size.
+    private void applyFullScreenBounds() {
+        frame.setUndecorated(true);
+        frame.setResizable(false);
+        GraphicsDevice device = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
+        Rectangle screenBounds = device.getDefaultConfiguration().getBounds();
+        frame.setBounds(screenBounds);
+        frame.setExtendedState(JFrame.MAXIMIZED_BOTH);
+    }
+
+    // Stops the music and releases the audio line immediately so playback doesn't
+    // linger after the window closes, then shuts the JVM down.
+    private void exitApplication() {
+        stopBackgroundMusic();
+        frame.dispose();
+        System.exit(0);
     }
 
     void show() {
@@ -177,38 +228,100 @@ public final class SwingUI {
         if (url == null) {
             return; // asset missing — skip splash rather than crash
         }
+        stopBackgroundMusic();
         splashImage = new ImageIcon(url).getImage();
 
-        SplashOverlay overlay = new SplashOverlay();
-        frame.setGlassPane(overlay);
-        overlay.setOpacity(1f);
-        overlay.setVisible(true);
+        splashOverlay = new SplashOverlay();
+        frame.setGlassPane(splashOverlay);
+        splashOverlay.setOpacity(1f);
+        splashOverlay.setVisible(true);
+        splashOverlay.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent event) {
+                skipSplashImmediately(splashOverlay);
+            }
+        });
+        installSplashEnterBinding();
 
-
-        Timer holdTimer = new Timer(SPLASH_HOLD_MS, event -> fadeOutSplash(overlay));
-        holdTimer.setRepeats(false);
-        holdTimer.start();
+        splashFading = false;
+        splashHoldTimer = new Timer(SPLASH_HOLD_MS, event -> fadeOutSplash(splashOverlay));
+        splashHoldTimer.setRepeats(false);
+        splashHoldTimer.start();
         playSplashAudio();
     }
 
-private void fadeOutSplash(SplashOverlay overlay) {
-    int stepMs = 30;
-    int totalSteps = SPLASH_FADE_MS / stepMs;
-    int[] step = {0};
-    Timer fadeTimer = new Timer(stepMs, null);
-    fadeTimer.addActionListener(event -> {
-        step[0]++;
-        float opacity = 1f - (float) step[0] / totalSteps;
-        if (opacity <= 0f) {
-            overlay.setVisible(false);
-            splashImage = null; // release the decoded frames
-            fadeTimer.stop();
-        } else {
-            overlay.setOpacity(opacity);
+    private void installSplashEnterBinding() {
+        InputMap inputMap = frame.getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        ActionMap actionMap = frame.getRootPane().getActionMap();
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "skipSplash");
+        actionMap.put("skipSplash", new AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent event) {
+                skipSplashImmediately(splashOverlay);
+            }
+        });
+    }
+
+    private void removeSplashEnterBinding() {
+        InputMap inputMap = frame.getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        inputMap.remove(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0));
+        frame.getRootPane().getActionMap().remove("skipSplash");
+    }
+
+    private void skipSplashImmediately(SplashOverlay overlay) {
+        if (overlay == null || overlay != splashOverlay) {
+            return;
         }
-    });
-    fadeTimer.start();
-}
+        if (splashHoldTimer != null) {
+            splashHoldTimer.stop();
+            splashHoldTimer = null;
+        }
+        if (splashFadeTimer != null) {
+            splashFadeTimer.stop();
+            splashFadeTimer = null;
+        }
+        stopSplashAudio();
+        removeSplashEnterBinding();
+        overlay.setVisible(false);
+        splashImage = null;
+        splashOverlay = null;
+        splashFading = false;
+        startBackgroundMusic();
+    }
+
+    private void fadeOutSplash(SplashOverlay overlay) {
+        if (overlay == null || overlay != splashOverlay || splashFading) {
+            return;
+        }
+        splashFading = true;
+        if (splashHoldTimer != null) {
+            splashHoldTimer.stop();
+            splashHoldTimer = null;
+        }
+        stopSplashAudio();
+        removeSplashEnterBinding();
+
+        int stepMs = 30;
+        int totalSteps = SPLASH_FADE_MS / stepMs;
+        int[] step = {0};
+        splashFadeTimer = new Timer(stepMs, null);
+        splashFadeTimer.addActionListener(event -> {
+            step[0]++;
+            float opacity = 1f - (float) step[0] / totalSteps;
+            if (opacity <= 0f) {
+                overlay.setVisible(false);
+                splashImage = null;
+                splashOverlay = null;
+                splashFading = false;
+                splashFadeTimer.stop();
+                splashFadeTimer = null;
+                startBackgroundMusic();
+            } else {
+                overlay.setOpacity(opacity);
+            }
+        });
+        splashFadeTimer.start();
+    }
 
     private JPanel buildMainMenuScreen() {
         JPanel card = panel(new BorderLayout(), 38);
@@ -244,22 +357,19 @@ private void fadeOutSplash(SplashOverlay overlay) {
         menuPlayButton = primaryButton("Play");
         menuPlayButton.setName("menuPlay");
         menuPlayButton.setMnemonic(KeyEvent.VK_P);
-        menuPlayButton.addActionListener(event -> showModeScreen());
+        menuPlayButton.addActionListener(event -> { playProgressSound(); showModeScreen(); });
         addMenuButton(content, menuPlayButton);
         content.add(Box.createVerticalStrut(12));
         JButton instructions = outlineButton("Instructions");
         instructions.setName("menuInstructions");
         instructions.setMnemonic(KeyEvent.VK_I);
-        instructions.addActionListener(event -> {
-            screens.show(root, "instructions");
-            frame.getRootPane().setDefaultButton(null);
-        });
+        instructions.addActionListener(event -> { playProgressSound(); showInstructionsScreen(); });
         addMenuButton(content, instructions);
         content.add(Box.createVerticalStrut(12));
         JButton exit = outlineButton("Exit");
         exit.setName("menuExit");
         exit.setMnemonic(KeyEvent.VK_X);
-        exit.addActionListener(event -> frame.dispose());
+        exit.addActionListener(event -> exitApplication());
         addMenuButton(content, exit);
         card.add(content, BorderLayout.CENTER);
         return centeredPage(card);
@@ -289,21 +399,21 @@ private void fadeOutSplash(SplashOverlay overlay) {
         JButton normalMode = modeOptionButton("Normal Mode", "Unlimited time per question");
         normalMode.setName("modeNormal");
         normalMode.setMnemonic(KeyEvent.VK_N);
-        normalMode.addActionListener(event -> { selectedTimedMode = false; showNameScreen(); });
+        normalMode.addActionListener(event -> { selectedTimedMode = false; playProgressSound(); showNameScreen(); });
         addMenuButton(content, normalMode);
         content.add(Box.createVerticalStrut(14));
 
         JButton timedMode = modeOptionButton("Timed Mode", GameEngine.TIMER_SECONDS + " seconds per question");
         timedMode.setName("modeTimed");
         timedMode.setMnemonic(KeyEvent.VK_T);
-        timedMode.addActionListener(event -> { selectedTimedMode = true; showNameScreen(); });
+        timedMode.addActionListener(event -> { selectedTimedMode = true; playProgressSound(); showNameScreen(); });
         addMenuButton(content, timedMode);
         content.add(Box.createVerticalStrut(18));
 
         JButton back = outlineButton("Back to menu");
         back.setName("modeBack");
         back.setMnemonic(KeyEvent.VK_B);
-        back.addActionListener(event -> showMainMenu());
+        back.addActionListener(event -> { playBackSound(); showMainMenu(); });
         addMenuButton(content, back);
 
         card.add(content, BorderLayout.CENTER);
@@ -311,7 +421,7 @@ private void fadeOutSplash(SplashOverlay overlay) {
     }
 
     private void showModeScreen() {
-        screens.show(root, "mode");
+        showScreen("mode", true);
         frame.getRootPane().setDefaultButton(null);
     }
 
@@ -390,7 +500,7 @@ private void fadeOutSplash(SplashOverlay overlay) {
         JButton back = outlineButton("Back to menu");
         back.setName("instructionsBack");
         back.setMnemonic(KeyEvent.VK_B);
-        back.addActionListener(event -> showMainMenu());
+        back.addActionListener(event -> { playBackSound(); showMainMenu(); });
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.CENTER));
         actions.setOpaque(false);
         back.setPreferredSize(new Dimension(190, 44));
@@ -476,7 +586,7 @@ private void fadeOutSplash(SplashOverlay overlay) {
         JButton back = outlineButton("Back to menu");
         back.setName("nameBack");
         back.setMnemonic(KeyEvent.VK_B);
-        back.addActionListener(event -> showMainMenu());
+        back.addActionListener(event -> { playBackSound(); showMainMenu(); });
         addMenuButton(content, back);
         card.add(content, BorderLayout.CENTER);
         return centeredPage(card);
@@ -503,14 +613,19 @@ private void fadeOutSplash(SplashOverlay overlay) {
     }
 
     private void showMainMenu() {
-        screens.show(root, "menu");
+        showScreen("menu", true);
         frame.getRootPane().setDefaultButton(menuPlayButton);
         menuPlayButton.requestFocusInWindow();
     }
 
+    private void showInstructionsScreen() {
+        showScreen("instructions", true);
+        frame.getRootPane().setDefaultButton(null);
+    }
+
     private void showNameScreen() {
+        showScreen("name", true);
         nameError.setText("");
-        screens.show(root, "name");
         frame.getRootPane().setDefaultButton(startButton);
         nameField.requestFocusInWindow();
     }
@@ -649,7 +764,7 @@ private void fadeOutSplash(SplashOverlay overlay) {
         String[] names = {"50:50", "Spin the Wheel", "Switch the Question", "Phone a Friend"};
         for (int i = 0; i < names.length; i++) {
             final int index = i;
-            JButton button = new StyledButton(names[i], false, i);
+            StyledButton button = new StyledButton(names[i], false, i);
             button.setName("lifeline" + i);
             button.setMnemonic(KeyEvent.VK_1 + i);
             button.setPreferredSize(new Dimension(120, 60));
@@ -722,7 +837,7 @@ private void fadeOutSplash(SplashOverlay overlay) {
             if (engine.isGameOver()) finishGame();
             else {
                 renderQuestion();
-                screens.show(root, "game");
+                showScreen("game", false);
                 frame.validate();
                 fitQuestionContent();
             }
@@ -806,35 +921,48 @@ private void fadeOutSplash(SplashOverlay overlay) {
     private void startSession() {
         String name = nameField.getText().trim();
         if (name.isEmpty()) {
+            playSfx(SFX_ACTION_ERROR);
             nameError.setText("Enter a player name to start.");
             nameField.requestFocusInWindow();
             nameField.setBorder(new CompoundBorder(new LineBorder(GOLD, 2, true),
                     new EmptyBorder(9, 11, 9, 11)));
             return;
         }
+        playProgressSound();
         nameError.setText("");
         nameField.setBorder(new CompoundBorder(new LineBorder(BORDER, 1, true),
                 new EmptyBorder(10, 12, 10, 12)));
         engine = new GameEngine(questionBank, random, name, selectedTimedMode);
         renderQuestion();
-        screens.show(root, "game");
+        showScreen("game", false);
         frame.validate();
         fitQuestionContent();
     }
 
     private void selectAnswer(int index) {
-        if (!engine.isOptionVisible(index)) return;
+        if (!engine.isOptionVisible(index)) {
+            playSfx(SFX_ACTION_ERROR);
+            return;
+        }
         selectedIndex = index;
+        playSfx(SFX_ANSWER_SELECT);
         lockButton.setEnabled(true);
         for (AnswerButton button : answerButtons) button.repaint();
     }
 
     private void lockAnswer() {
-        if (selectedIndex < 0 || !engine.isOptionVisible(selectedIndex)) return;
+        if (selectedIndex < 0 || !engine.isOptionVisible(selectedIndex)) {
+            playSfx(SFX_ACTION_ERROR);
+            return;
+        }
+        playSfx(SFX_ANSWER_SELECT);
         stopQuestionTimer();
         Question resolved = engine.currentQuestion();
         GameEngine.AnswerOutcome outcome = engine.answer(selectedIndex);
         boolean correct = outcome == GameEngine.AnswerOutcome.CORRECT;
+        if (correct) {
+            playSfx(SFX_CORRECT_ANSWER);
+        }
         feedbackTitle.setText(outcome == GameEngine.AnswerOutcome.CORRECT
                 ? "Correct answer" : "Incorrect answer");
         feedbackTitle.setForeground(correct ? GREEN : RED);
@@ -842,12 +970,22 @@ private void fadeOutSplash(SplashOverlay overlay) {
         feedbackDetail.setText("Correct answer: " + (char) ('A' + resolved.correctIndex())
                 + ") " + resolved.correctOptionText() + "\n\nSource: " + resolved.citation());
         updateSessionHeader();
-        screens.show(root, "feedback");
+        showScreen("feedback", false);
         frame.getRootPane().setDefaultButton(continueButton);
         continueButton.requestFocusInWindow();
     }
 
     private void useLifeline(int index) {
+        LifelineManager.Lifeline[] types = LifelineManager.Lifeline.values();
+        if (index < 0 || index >= types.length) {
+            throw new IllegalArgumentException("Unknown lifeline");
+        }
+        if (!engine.lifelines().isAvailable(types[index])) {
+            playSfx(SFX_ACTION_ERROR);
+            noticeText.setText("That lifeline has already been used.");
+            return;
+        }
+
         try {
             switch (index) {
                 case 0 -> {
@@ -883,11 +1021,13 @@ private void fadeOutSplash(SplashOverlay overlay) {
                 case 3 -> noticeText.setText("Phone a Friend: " + engine.usePhoneAFriend());
                 default -> throw new IllegalArgumentException("Unknown lifeline");
             }
+            playBackSound();
             refreshAnswerButtons();
             refreshLifelines();
             frame.validate();
             fitQuestionContent();
         } catch (IllegalStateException e) {
+            playSfx(SFX_ACTION_ERROR);
             noticeText.setText(e.getMessage());
             refreshLifelines();
         }
@@ -1030,7 +1170,7 @@ private void fadeOutSplash(SplashOverlay overlay) {
                 + (char) ('A' + resolved.correctIndex()) + ") " + resolved.correctOptionText()
                 + "\n\nSource: " + resolved.citation());
         updateSessionHeader();
-        screens.show(root, "feedback");
+        showScreen("feedback", false);
         frame.getRootPane().setDefaultButton(continueButton);
         continueButton.requestFocusInWindow();
     }
@@ -1050,7 +1190,7 @@ private void fadeOutSplash(SplashOverlay overlay) {
     private void refreshLifelines() {
         LifelineManager.Lifeline[] types = LifelineManager.Lifeline.values();
         for (int i = 0; i < types.length; i++) {
-            lifelineButtons[i].setEnabled(engine.lifelines().isAvailable(types[i]));
+            lifelineButtons[i].setAvailable(engine.lifelines().isAvailable(types[i]));
         }
     }
 
@@ -1096,7 +1236,7 @@ private void fadeOutSplash(SplashOverlay overlay) {
         if (resultsPage != null) root.remove(resultsPage);
         resultsPage = buildResultsScreen(logPath, logError);
         root.add(resultsPage, "results");
-        screens.show(root, "results");
+        showScreen("results", false);
     }
 
     private JPanel buildResultsScreen(Path logPath, String logError) {
@@ -1180,11 +1320,12 @@ private void fadeOutSplash(SplashOverlay overlay) {
         again.setName("playAgain");
         again.addActionListener(event -> {
             nameField.setText("");
+            playProgressSound();
             showNameScreen();
         });
         JButton menu = outlineButton("Main menu");
         menu.setName("resultsMenu");
-        menu.addActionListener(event -> showMainMenu());
+        menu.addActionListener(event -> { playBackSound(); showMainMenu(); });
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 0));
         actions.setOpaque(false);
         again.setPreferredSize(new Dimension(170, 48));
@@ -1480,6 +1621,7 @@ private void fadeOutSplash(SplashOverlay overlay) {
     private static final class StyledButton extends JButton {
         private final boolean primary;
         private final int lifeline;
+        private boolean available = true;
 
         StyledButton(String text, boolean primary, int lifeline) {
             super(text);
@@ -1497,6 +1639,14 @@ private void fadeOutSplash(SplashOverlay overlay) {
             setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
         }
 
+        void setAvailable(boolean available) {
+            this.available = available;
+            setEnabled(true);
+            getAccessibleContext().setAccessibleDescription(
+                    available ? null : "This lifeline has already been used.");
+            repaint();
+        }
+
         @Override
         protected void paintComponent(Graphics graphics) {
             Graphics2D g = (Graphics2D) graphics.create();
@@ -1504,30 +1654,31 @@ private void fadeOutSplash(SplashOverlay overlay) {
                     RenderingHints.VALUE_ANTIALIAS_ON);
             g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
                     RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            boolean actionable = isEnabled() && available;
             boolean hover = getModel().isRollover();
             boolean pressed = getModel().isPressed();
-            Color top = !isEnabled() ? new Color(34, 55, 84)
+            Color top = !actionable ? new Color(34, 55, 84)
                     : primary ? hover ? new Color(110, 154, 255)
                     : new Color(89, 137, 251)
                     : hover ? new Color(36, 67, 109)
                     : new Color(24, 49, 82);
-            Color bottom = !isEnabled() ? new Color(25, 44, 71)
+            Color bottom = !actionable ? new Color(25, 44, 71)
                     : primary ? pressed ? new Color(54, 94, 197)
                     : new Color(58, 105, 225)
                     : new Color(18, 40, 70);
             g.setPaint(new GradientPaint(0, 0, top, 0, getHeight(), bottom));
             g.fillRoundRect(1, 1, getWidth() - 2, getHeight() - 2, 12, 12);
-            g.setColor(isFocusOwner() ? GOLD : !isEnabled()
+            g.setColor(isFocusOwner() ? GOLD : !actionable
                     ? new Color(65, 88, 122) : primary ? PERIWINKLE
                     : hover ? PERIWINKLE : BORDER);
             g.setStroke(new BasicStroke(isFocusOwner() ? 2f : 1.2f));
             g.drawRoundRect(1, 1, getWidth() - 3, getHeight() - 3, 12, 12);
-            if (primary && isEnabled()) {
+            if (primary && actionable) {
                 g.setColor(new Color(240, 246, 255, 48));
                 g.drawLine(13, 3, Math.max(13, getWidth() - 14), 3);
             }
             g.setFont(getFont());
-            g.setColor(isEnabled() ? TEXT : MUTED);
+            g.setColor(actionable ? TEXT : MUTED);
             FontMetrics metrics = g.getFontMetrics();
             if (lifeline >= 0) {
                 paintLifeline(g, metrics);
@@ -1542,7 +1693,8 @@ private void fadeOutSplash(SplashOverlay overlay) {
         private void paintLifeline(Graphics2D g, FontMetrics metrics) {
             int iconX = (getWidth() - 28) / 2;
             int iconY = 9;
-            g.setColor(isEnabled() ? PERIWINKLE : MUTED);
+            boolean actionable = isEnabled() && available;
+            g.setColor(actionable ? PERIWINKLE : MUTED);
             g.setStroke(new BasicStroke(2.2f, BasicStroke.CAP_ROUND,
                     BasicStroke.JOIN_ROUND));
             switch (lifeline) {
@@ -1584,7 +1736,7 @@ private void fadeOutSplash(SplashOverlay overlay) {
                 }
                 default -> throw new IllegalStateException("Unknown lifeline icon");
             }
-            g.setColor(isEnabled() ? TEXT : MUTED);
+            g.setColor(actionable ? TEXT : MUTED);
             List<String> lines = AnswerButton.wrap(getText(), metrics,
                     Math.max(60, getWidth() - 16));
             int baseline = getHeight() / 2 + 20 - (lines.size() - 1) * 10;
@@ -1873,6 +2025,142 @@ private void fadeOutSplash(SplashOverlay overlay) {
         }
     }
 
+    private void showScreen(String screen, boolean playBackgroundMusic) {
+        if (playBackgroundMusic) {
+            startBackgroundMusic();
+        } else {
+            stopBackgroundMusic();
+        }
+        screens.show(root, screen);
+    }
+
+    // Falls back to a filesystem path (relative to the working directory) when the
+    // asset wasn't copied onto the classpath, e.g. bg.wav omitted from a manual java -cp run.
+    private URL resolveAudioResource(String classpathResource, String... relativeFilePaths) {
+        URL url = getClass().getResource(classpathResource);
+        if (url != null) {
+            return url;
+        }
+        for (String relativePath : relativeFilePaths) {
+            Path candidate = Paths.get(relativePath);
+            if (Files.isRegularFile(candidate)) {
+                try {
+                    return candidate.toUri().toURL();
+                } catch (MalformedURLException e) {
+                    // try the next candidate path
+                }
+            }
+        }
+        return null;
+    }
+
+    private void startBackgroundMusic() {
+        if (backgroundMusic != null && backgroundMusic.isRunning()) {
+            return;
+        }
+        stopBackgroundMusic();
+
+        URL url = resolveAudioResource("/bg.wav", "resources/bg.wav");
+        if (url == null) {
+            System.err.println("Background music not found on classpath or in resources/bg.wav");
+            return;
+        }
+
+        try (AudioInputStream sourceStream = AudioSystem.getAudioInputStream(url)) {
+            AudioFormat sourceFormat = sourceStream.getFormat();
+            AudioFormat playbackFormat = new AudioFormat(
+                    AudioFormat.Encoding.PCM_SIGNED,
+                    sourceFormat.getSampleRate(),
+                    16,
+                    sourceFormat.getChannels(),
+                    sourceFormat.getChannels() * 2,
+                    sourceFormat.getSampleRate(),
+                    false);
+            if (!AudioSystem.isConversionSupported(playbackFormat, sourceFormat)) {
+                System.err.println("Background music format cannot be converted for playback: "
+                        + sourceFormat);
+                return;
+            }
+
+            try (AudioInputStream playbackStream =
+                    AudioSystem.getAudioInputStream(playbackFormat, sourceStream)) {
+                Clip clip = AudioSystem.getClip();
+                try {
+                    clip.open(playbackStream);
+                    setBackgroundMusicVolume(clip);
+                    clip.loop(Clip.LOOP_CONTINUOUSLY);
+                    clip.start();
+                    backgroundMusic = clip;
+                } catch (LineUnavailableException e) {
+                    clip.close();
+                    throw e;
+                }
+            }
+        } catch (UnsupportedAudioFileException | IOException | LineUnavailableException e) {
+            backgroundMusic = null;
+            System.err.println("Could not play background music: " + e.getMessage());
+        }
+    }
+
+    private void setBackgroundMusicVolume(Clip clip) {
+        if (!clip.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
+            System.err.println("Background music volume control is not supported by the audio mixer.");
+            return;
+        }
+
+        FloatControl gain = (FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
+        float gainDecibels = (float) (20.0 * Math.log10(BACKGROUND_MUSIC_LEVEL));
+        gain.setValue(Math.max(gain.getMinimum(), Math.min(gain.getMaximum(), gainDecibels)));
+    }
+
+    private void stopBackgroundMusic() {
+        if (backgroundMusic != null) {
+            backgroundMusic.stop();
+            backgroundMusic.flush();
+            backgroundMusic.close();
+            backgroundMusic = null;
+        }
+    }
+
+    // Click sound for buttons that advance toward the game loop or open Instructions.
+    private void playProgressSound() {
+        playSfx(SFX_PROGRESS);
+    }
+
+    // Click sound for buttons that navigate back to the main menu.
+    private void playBackSound() {
+        playSfx(SFX_BACK);
+    }
+
+    // Fire-and-forget short sound effect; the clip closes itself once playback stops.
+    private void playSfx(String fileName) {
+        URL url = resolveAudioResource("/sfx/" + fileName, "resources/sfx/" + fileName);
+        if (url == null) {
+            System.err.println("Sound effect not found on classpath or in resources/sfx/" + fileName);
+            return;
+        }
+
+        try (AudioInputStream audioStream = AudioSystem.getAudioInputStream(url)) {
+            Clip clip = AudioSystem.getClip();
+            clip.addLineListener(event -> {
+                if (event.getType() == LineEvent.Type.STOP) {
+                    clip.close();
+                }
+            });
+            clip.open(audioStream);
+            if (clip.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
+                FloatControl gain = (FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
+                gain.setValue(Math.min(gain.getMaximum(),
+                        Math.max(gain.getMinimum(), BUTTON_SFX_GAIN_DB)));
+            } else {
+                System.err.println("Button sound volume control is not supported by the audio mixer.");
+            }
+            clip.start();
+        } catch (UnsupportedAudioFileException | IOException | LineUnavailableException e) {
+            System.err.println("Could not play sound effect " + fileName + ": " + e.getMessage());
+        }
+    }
+
     private void playSplashAudio() {
         URL url = getClass().getResource("/splash.wav");
         if (url == null) {
@@ -1882,9 +2170,28 @@ private void fadeOutSplash(SplashOverlay overlay) {
         try (AudioInputStream audioStream = AudioSystem.getAudioInputStream(url)) {
             Clip clip = AudioSystem.getClip();
             clip.open(audioStream);
+            splashAudio = clip;
+            clip.addLineListener(event -> {
+                if (event.getType() == LineEvent.Type.STOP) {
+                    if (splashAudio == clip) {
+                        splashAudio = null;
+                    }
+                    clip.close();
+                }
+            });
             clip.start();
-        } catch (Exception e) {
+        } catch (UnsupportedAudioFileException | IOException | LineUnavailableException e) {
             System.err.println("Could not play splash audio: " + e.getMessage());
+        }
+    }
+
+    private void stopSplashAudio() {
+        if (splashAudio != null) {
+            Clip clip = splashAudio;
+            splashAudio = null;
+            clip.stop();
+            clip.flush();
+            clip.close();
         }
     }
 }

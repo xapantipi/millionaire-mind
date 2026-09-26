@@ -24,12 +24,27 @@ copies the bundled question bank, then opens Swing. It can also accept a path
 to another question-bank CSV: `.\run-swing.cmd "path\to\questions.csv"`.
 Run it from the `millionaire-mind-swing-ui` worktree; the original
 `millionaire-mind` checkout does not contain this experiment.
-The title screen offers **Play**, **Instructions**, and **Exit**. Play opens
-a centered player-name form. In the game, select an answer and then choose
-**Lock in answer**. Long answer choices wrap in taller cards. For unusually
-long text, the Swing view reduces its text size to fit the game window.
+The Swing UI opens fullscreen at the primary display's current resolution,
+without window borders. During the splash screen, click anywhere or press
+**Enter** to skip it immediately; otherwise, it fades away automatically
+after 20 seconds. The title screen offers **Play**, **Instructions**, and
+**Exit**. Play opens a centered player-name form. In the game, select an
+answer and then choose **Lock in answer**. Long answer choices wrap in taller
+cards. For unusually long text, the Swing view reduces its text size to fit
+the display.
 The Swing screens use a navy node theme, a question-progress strip, and
-color-coded prize checkpoints; these are presentation only.
+color-coded prize checkpoints. `resources/bg.wav` loops on the menu,
+instructions, mode selection, and name screens, and stops for gameplay,
+feedback, and results. `resources/sfx/niera_sound_5.wav` plays on buttons
+that advance toward the game loop or open Instructions, and
+`resources/sfx/niera_sound_2.wav` plays on buttons that return to the main
+menu. `resources/sfx/select_005.wav` plays when selecting an answer and
+locking it in, `resources/sfx/confirmation_004.wav` plays for a correct
+answer. `resources/sfx/error_006.wav` plays when an attempted action cannot
+proceed, such as starting without a name or trying to reuse a spent lifeline.
+Spent lifelines keep their disabled appearance but can be clicked to play the
+error sound and show a notice. Successfully using a lifeline plays
+`resources/sfx/niera_sound_2.wav`.
 
 From a Bash shell:
 
@@ -46,11 +61,32 @@ From a Bash shell:
 Manually, without the scripts:
 
 ```bash
-javac --release 17 -d out $(find src -name "*.java")
+javac --release 17 -d out $(find src/main/java -name "*.java")
 cp "resources/Question Bank.csv" out/questions.csv
 java -cp out millionairemind.ConsoleUI
-java -cp out millionairemind.SwingUI
 ```
+
+To launch Swing manually with its background and splash audio/assets:
+
+```bash
+javac --release 17 -d out-swing $(find src/main/java -name "*.java" -not -name "ConsoleUI.java")
+cp "resources/Question Bank.csv" out-swing/questions.csv
+cp "resources/bg.wav" out-swing/bg.wav
+cp "resources/splash.gif" out-swing/splash.gif
+cp "resources/splash.wav" out-swing/splash.wav
+mkdir -p out-swing/sfx
+cp "resources/sfx/niera_sound_5.wav" out-swing/sfx/niera_sound_5.wav
+cp "resources/sfx/niera_sound_2.wav" out-swing/sfx/niera_sound_2.wav
+cp "resources/sfx/select_005.wav" out-swing/sfx/select_005.wav
+cp "resources/sfx/confirmation_004.wav" out-swing/sfx/confirmation_004.wav
+cp "resources/sfx/error_006.wav" out-swing/sfx/error_006.wav
+java -cp out-swing millionairemind.SwingUI
+```
+
+`SwingUI` also falls back to reading `bg.wav` and the `sfx/` sounds straight
+from `resources/` on disk (relative to the working directory) if they were
+not copied onto the classpath, so a manual run still gets sound even if a
+copy step is skipped.
 
 Session replay logs are written to `logs/replay-YYMMDD-HHMMSS.log`. A numeric
 suffix keeps files distinct when two sessions finish within the same second.
@@ -58,7 +94,7 @@ Launch from the project directory so both UIs write logs there. In PowerShell
 without Bash, use:
 
 ```powershell
-$javaFiles = @(Get-ChildItem .\src -Recurse -Filter '*.java' -File |
+$javaFiles = @(Get-ChildItem .\src\main\java -Recurse -Filter '*.java' -File |
     Select-Object -ExpandProperty FullName)
 javac --release 17 -d out $javaFiles
 Copy-Item -LiteralPath 'resources\Question Bank.csv' -Destination 'out\questions.csv'
@@ -83,6 +119,9 @@ src/main/java/millionairemind/
 
 resources/
   Question Bank.csv       Official source question bank (see format below)
+  bg.wav                  Background music for non-gameplay Swing screens
+  sfx/niera_sound_5.wav   Click sound for buttons progressing to the game/instructions
+  sfx/niera_sound_2.wav   Click sound for buttons returning to the main menu
 ```
 
 This mirrors the "Backend Architecture (Java)" section of the proposal

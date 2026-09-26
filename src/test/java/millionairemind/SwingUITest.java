@@ -241,9 +241,16 @@ public final class SwingUITest {
                             .contains(ui.engine().currentQuestion().hint()),
                     "Phone a Friend should show the current question's hint");
             for (int i = 0; i < 4; i++) {
-                check(!find(ui.frame(), "lifeline" + i, AbstractButton.class).isEnabled(),
-                        "each lifeline should be unavailable after use");
+                AbstractButton lifeline = find(ui.frame(), "lifeline" + i, AbstractButton.class);
+                check(lifeline.isEnabled()
+                                && lifeline.getAccessibleContext().getAccessibleDescription()
+                                .contains("already been used"),
+                        "each used lifeline should stay clickable and be marked unavailable");
             }
+            click(ui, "lifeline0");
+            check(find(ui.frame(), "lifelineNotice", JTextArea.class).getText()
+                            .contains("already been used"),
+                    "trying to reuse a lifeline should show an unavailable notice");
             click(ui, "walkAway");
             check(ui.engine().session().walkedAway()
                             && ui.engine().session().bankedWinnings() == 2_000,
