@@ -41,7 +41,8 @@ public final class SwingUITest {
             Path resultsPreview = args.length > 6 ? Path.of(args[6]) : null;
             Path fiftyPreview = args.length > 7 ? Path.of(args[7]) : null;
             Path wrongPreview = args.length > 8 ? Path.of(args[8]) : null;
-            launchesWithBundledQuestionBank(menuPreview, instructionsPreview);
+            Path instructions2Preview = args.length > 9 ? Path.of(args[9]) : null;
+            launchesWithBundledQuestionBank(menuPreview, instructionsPreview, instructions2Preview);
             playsToCheckpointAndLogsWalkAway(temp.resolve("logs"), preview,
                     namePreview, feedbackPreview, resultsPreview, fiftyPreview);
             showsBonusTimeAsUntimed(temp.resolve("bonus-logs"));
@@ -62,7 +63,7 @@ public final class SwingUITest {
     }
 
     private static void launchesWithBundledQuestionBank(Path menuPreview,
-            Path instructionsPreview) throws Exception {
+            Path instructionsPreview, Path instructions2Preview) throws Exception {
         SwingUI.main(new String[0]);
         SwingUtilities.invokeAndWait(() -> {
             JFrame launched = null;
@@ -76,13 +77,15 @@ public final class SwingUITest {
             check(find(launched, "menuPlay", AbstractButton.class).isShowing(),
                     "the game should open on the title menu");
             find(launched, "menuInstructions", AbstractButton.class).doClick();
+
+            // Screen 1: general gameplay and the prize ladder.
             JTextArea instructions = find(launched, "instructionsText", JTextArea.class);
             check(instructions.isShowing()
-                            && instructions.getText().contains("artificial intelligence")
+                            && instructions.getText().contains("Bloom's Taxonomy")
                             && containsLabel(launched.getContentPane(),
-                                    "$2,000 guaranteed after Question 5")
+                                    "Reach Question 5: $2,000 is guaranteed")
                             && containsLabel(launched.getContentPane(),
-                                    "$64,000 guaranteed after Question 10")
+                                    "Reach Question 10: $64,000 is guaranteed")
                             && find(launched, "prizeTerms", JTextArea.class).getText()
                                     .contains("Walk Away"),
                     "Instructions should explain play and emphasize both checkpoint prizes");
@@ -91,22 +94,48 @@ public final class SwingUITest {
                     "the instructions card should retain a readable width");
             checkCentered(launched, "instructionsCard");
             for (String name : new String[] {"instructionsText", "prizeTerms",
-                    "afterAnswerText", "instructionsBack"}) {
+                    "instructionsBack1", "instructionsNext1", "instructionsHome1",
+                    "instructionsLadder"}) {
                 checkWithin(launched, instructionsCard, name);
             }
+            for (int slot = 1; slot <= PrizeLadder.totalSlots(); slot++) {
+                checkWithin(launched, instructionsCard, "instructionsLadderQ" + slot);
+            }
+            check(!find(launched, "instructionsBack1", AbstractButton.class).isEnabled(),
+                    "the first instructions screen should disable Back");
+            check(find(launched, "instructionsNext1", AbstractButton.class).isEnabled(),
+                    "the first instructions screen should enable Next");
+            if (instructionsPreview != null) capture(launched, instructionsPreview);
+
+            // Screen 2: lifelines.
+            find(launched, "instructionsNext1", AbstractButton.class).doClick();
+            JPanel instructionsCard2 = find(launched, "instructionsCard2", JPanel.class);
+            check(instructionsCard2.isShowing(), "Next should open the lifelines screen");
+            checkCentered(launched, "instructionsCard2");
             for (int i = 0; i < 4; i++) {
-                checkWithin(launched, instructionsCard, "lifelineInstruction" + i);
+                checkWithin(launched, instructionsCard2, "lifelinePreview" + i);
+                checkWithin(launched, instructionsCard2, "lifelineInstruction" + i);
                 String bullet = find(launched, "lifelineInstruction" + i,
                         JTextArea.class).getText();
                 check(bullet.startsWith("•  "),
                         "each lifeline should have its own bullet point");
-                check(!bullet.contains("50:50") && !bullet.contains("Q5"),
-                        "Instructions should spell out abbreviations");
             }
-            if (instructionsPreview != null) capture(launched, instructionsPreview);
-            find(launched, "instructionsBack", AbstractButton.class).doClick();
+            check(find(launched, "lifelineInstruction0", JTextArea.class).getText()
+                            .contains("50:50"),
+                    "the lifelines screen should name each lifeline");
+            check(find(launched, "instructionsBack2", AbstractButton.class).isEnabled(),
+                    "the second instructions screen should enable Back");
+            check(!find(launched, "instructionsNext2", AbstractButton.class).isEnabled(),
+                    "the second instructions screen should disable Next");
+            if (instructions2Preview != null) capture(launched, instructions2Preview);
+
+            find(launched, "instructionsBack2", AbstractButton.class).doClick();
+            check(find(launched, "instructionsCard", JPanel.class).isShowing(),
+                    "Back on the lifelines screen should return to the first screen");
+
+            find(launched, "instructionsHome1", AbstractButton.class).doClick();
             check(find(launched, "menuPlay", AbstractButton.class).isShowing(),
-                    "Instructions should return to the main menu");
+                    "the home button should return to the main menu");
             if (menuPreview != null) capture(launched, menuPreview);
             find(launched, "menuExit", AbstractButton.class).doClick();
             check(!launched.isDisplayable(), "Exit should close the game window");

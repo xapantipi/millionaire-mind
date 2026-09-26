@@ -178,7 +178,8 @@ public final class SwingUI {
         root.setBackground(BACKGROUND);
         root.add(buildMainMenuScreen(), "menu");
         root.add(buildModeScreen(), "mode");
-        root.add(buildInstructionsScreen(), "instructions");
+        root.add(buildInstructionsScreen1(), "instructions1");
+        root.add(buildInstructionsScreen2(), "instructions2");
         root.add(buildNameScreen(), "name");
         root.add(buildGameScreen(), "game");
         root.add(buildFeedbackScreen(), "feedback");
@@ -432,98 +433,222 @@ public final class SwingUI {
         return button;
     }
 
-    private JPanel buildInstructionsScreen() {
-        JPanel card = panel(new BorderLayout(0, 8), 20);
+    private JPanel buildInstructionsScreen1() {
+        JPanel card = panel(new BorderLayout(0, 12), 22);
         card.setName("instructionsCard");
-        card.setPreferredSize(new Dimension(860, 640));
-        JLabel title = label("How to play", 32, true, TEXT);
+        card.setPreferredSize(new Dimension(900, 610));
+        JLabel title = label("How to Play", 28, true, TEXT);
         title.setHorizontalAlignment(SwingConstants.CENTER);
         card.add(title, BorderLayout.NORTH);
-        JPanel content = new JPanel();
-        content.setOpaque(false);
-        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
-        JTextArea intro = instructionText("Answer fifteen questions about artificial "
-                + "intelligence fundamentals across six Bloom's Taxonomy levels. "
-                + "Select a choice, then choose Lock in answer. There is no timer.", 17, 54);
-        intro.setName("instructionsText");
-        content.add(intro);
-        content.add(Box.createVerticalStrut(8));
 
-        JPanel prizes = panel(new BorderLayout(0, 3), 7);
-        prizes.setBackground(PANEL_DARK);
-        prizes.setAlignmentX(0);
-        prizes.setMaximumSize(new Dimension(Integer.MAX_VALUE, 180));
-        JLabel prizeTitle = label("Prize money", 21, true, GOLD);
-        prizes.add(prizeTitle, BorderLayout.NORTH);
-        JPanel prizeLines = new JPanel(new GridLayout(2, 1, 0, 4));
-        prizeLines.setOpaque(false);
-        prizeLines.add(label("$2,000 guaranteed after Question 5", 18, true, TEXT));
-        prizeLines.add(label("$64,000 guaranteed after Question 10", 18, true, TEXT));
-        prizes.add(prizeLines, BorderLayout.CENTER);
-        JTextArea prizeTerms = instructionText("An incorrect answer or Walk Away pays the latest "
-                + "checkpoint you have passed. Before the first checkpoint, it pays $0.",
-                15, 37);
+        JPanel body = new JPanel(new BorderLayout(18, 0));
+        body.setOpaque(false);
+
+        JPanel textColumn = new JPanel();
+        textColumn.setOpaque(false);
+        textColumn.setLayout(new BoxLayout(textColumn, BoxLayout.Y_AXIS));
+
+        JLabel gameplayTitle = label("General Gameplay", 18, true, GOLD);
+        gameplayTitle.setAlignmentX(0);
+        textColumn.add(gameplayTitle);
+        textColumn.add(Box.createVerticalStrut(6));
+        JTextArea gameplayText = instructionText("Answer 15 multiple-choice questions about "
+                + "AI fundamentals across six levels of Bloom's Taxonomy. Choose an answer, "
+                + "then select Lock in answer. Keep answering correctly to climb the prize "
+                + "ladder and reach the $1,000,000 question.", 14, 620, 92);
+        gameplayText.setName("instructionsText");
+        textColumn.add(gameplayText);
+        textColumn.add(Box.createVerticalStrut(14));
+
+        JLabel prizeTitle = label("Prize Money", 18, true, GOLD);
+        prizeTitle.setAlignmentX(0);
+        textColumn.add(prizeTitle);
+        textColumn.add(Box.createVerticalStrut(6));
+        JTextArea prizeIntro = instructionText("Every correct answer moves you one step "
+                + "closer to becoming a millionaire.", 14, 620, 24);
+        prizeIntro.setName("prizeIntroText");
+        textColumn.add(prizeIntro);
+        textColumn.add(Box.createVerticalStrut(10));
+
+        JPanel checkpointBox = panel(new BorderLayout(), 12);
+        checkpointBox.setName("checkpointSummary");
+        checkpointBox.setBackground(PANEL_DARK);
+        checkpointBox.setAlignmentX(0);
+        checkpointBox.setMaximumSize(new Dimension(Integer.MAX_VALUE, 66));
+        JPanel checkpointLines = new JPanel(new GridLayout(2, 1, 0, 4));
+        checkpointLines.setOpaque(false);
+        checkpointLines.add(label("Reach Question 5: $2,000 is guaranteed", 14, true, TEXT));
+        checkpointLines.add(label("Reach Question 10: $64,000 is guaranteed", 14, true, TEXT));
+        checkpointBox.add(checkpointLines, BorderLayout.CENTER);
+        textColumn.add(checkpointBox);
+        textColumn.add(Box.createVerticalStrut(10));
+
+        JTextArea prizeTerms = instructionText("Get an answer wrong and you'll fall back "
+                + "to the latest checkpoint you've reached. You can also Walk Away "
+                + "whenever you want and keep your guaranteed winnings.", 14, 620, 56);
         prizeTerms.setName("prizeTerms");
-        prizes.add(prizeTerms, BorderLayout.SOUTH);
-        content.add(prizes);
-        content.add(Box.createVerticalStrut(10));
+        textColumn.add(prizeTerms);
 
-        JLabel lifelineTitle = label("Lifelines · each can be used once", 20, true, TEXT);
-        lifelineTitle.setAlignmentX(0);
-        content.add(lifelineTitle);
-        content.add(Box.createVerticalStrut(7));
-        addInstructionBullet(content, "lifelineInstruction0",
-                "•  Fifty-Fifty — Removes two incorrect choices.", 25);
-        content.add(Box.createVerticalStrut(4));
-        addInstructionBullet(content, "lifelineInstruction1",
-                "•  Spin the Wheel — Randomly removes an incorrect "
-                + "choice, reduces the choices to two, or awards bonus time. "
-                + "Bonus time has no effect in this untimed game.", 49);
-        content.add(Box.createVerticalStrut(4));
-        addInstructionBullet(content, "lifelineInstruction2",
-                "•  Switch the Question — Draws another question "
-                + "from the same Bloom level.", 29);
-        content.add(Box.createVerticalStrut(4));
-        addInstructionBullet(content, "lifelineInstruction3",
-                "•  Phone a Friend — Reveals a hint for the current question.", 29);
-        content.add(Box.createVerticalStrut(10));
-        JLabel afterTitle = label("After each answer", 20, true, TEXT);
-        afterTitle.setAlignmentX(0);
-        content.add(afterTitle);
-        content.add(Box.createVerticalStrut(5));
-        JTextArea afterAnswer = instructionText("The correct answer includes a source citation. "
-                + "When the game ends, your results show your winnings and a report "
-                + "for each Bloom level.", 16, 45);
-        afterAnswer.setName("afterAnswerText");
-        content.add(afterAnswer);
-        card.add(content, BorderLayout.CENTER);
-        JButton back = outlineButton("Back to menu");
-        back.setName("instructionsBack");
-        back.setMnemonic(KeyEvent.VK_B);
-        back.addActionListener(event -> { playBackSound(); showMainMenu(); });
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        actions.setOpaque(false);
-        back.setPreferredSize(new Dimension(190, 44));
-        actions.add(back);
-        card.add(actions, BorderLayout.SOUTH);
+        body.add(textColumn, BorderLayout.CENTER);
+        JPanel ladder = buildInstructionsLadder();
+        ladder.setPreferredSize(new Dimension(190, 420));
+        body.add(ladder, BorderLayout.EAST);
+        card.add(body, BorderLayout.CENTER);
+
+        JButton back = outlineButton("Back");
+        back.setName("instructionsBack1");
+        back.setEnabled(false);
+        JButton next = outlineButton("Next");
+        next.setName("instructionsNext1");
+        next.setMnemonic(KeyEvent.VK_N);
+        next.addActionListener(event -> { playProgressSound(); showInstructionsScreen2(); });
+        card.add(buildInstructionsNavBar(back, next, "instructionsHome1"), BorderLayout.SOUTH);
         return centeredPage(card);
     }
 
-    private static JTextArea instructionText(String text, int size, int height) {
+    private JPanel buildInstructionsScreen2() {
+        JPanel card = panel(new BorderLayout(0, 12), 22);
+        card.setName("instructionsCard2");
+        card.setPreferredSize(new Dimension(900, 610));
+        JLabel title = label("How to Play", 28, true, TEXT);
+        title.setHorizontalAlignment(SwingConstants.CENTER);
+        card.add(title, BorderLayout.NORTH);
+
+        JPanel content = new JPanel();
+        content.setOpaque(false);
+        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
+
+        JLabel lifelineTitle = label("Lifelines", 18, true, GOLD);
+        lifelineTitle.setAlignmentX(0);
+        content.add(lifelineTitle);
+        content.add(Box.createVerticalStrut(8));
+
+        JPanel lifelineBox = panel(new BorderLayout(0, 6), 14);
+        lifelineBox.setName("lifelinePreviewBox");
+        lifelineBox.setBackground(PANEL_DARK);
+        lifelineBox.setAlignmentX(0);
+        lifelineBox.setMaximumSize(new Dimension(Integer.MAX_VALUE, 132));
+        lifelineBox.add(label("Lifelines", 13, false, MUTED), BorderLayout.NORTH);
+        JPanel lifelineRow = new JPanel(new GridLayout(1, 4, 12, 0));
+        lifelineRow.setOpaque(false);
+        String[] names = {"50:50", "Spin the Wheel", "Switch the Question", "Phone a Friend"};
+        for (int i = 0; i < names.length; i++) {
+            StyledButton preview = new StyledButton(names[i], false, i);
+            preview.setName("lifelinePreview" + i);
+            preview.setPreferredSize(new Dimension(140, 80));
+            preview.setEnabled(false);
+            preview.setFocusable(false);
+            lifelineRow.add(preview);
+        }
+        lifelineBox.add(lifelineRow, BorderLayout.CENTER);
+        content.add(lifelineBox);
+        content.add(Box.createVerticalStrut(12));
+
+        JTextArea intro = instructionText("You're not completely on your own. You have "
+                + "four lifelines, and each one can only be used once.", 15, 800, 30);
+        intro.setName("lifelineIntroText");
+        content.add(intro);
+        content.add(Box.createVerticalStrut(6));
+
+        addInstructionBullet(content, "lifelineInstruction0",
+                "•  50:50 – Removes two wrong answers, leaving you with two choices.", 800, 26);
+        content.add(Box.createVerticalStrut(4));
+        addInstructionBullet(content, "lifelineInstruction1",
+                "•  Spin the Wheel – Gives you a random advantage — it might remove a "
+                + "wrong answer, narrow your choices, or give you bonus time.", 800, 42);
+        content.add(Box.createVerticalStrut(4));
+        addInstructionBullet(content, "lifelineInstruction2",
+                "•  Switch the Question – Don't like the question? Swap it for another "
+                + "one from the same Bloom's level.", 800, 42);
+        content.add(Box.createVerticalStrut(4));
+        addInstructionBullet(content, "lifelineInstruction3",
+                "•  Phone a Friend – Get a hint to help you figure out the answer.", 800, 26);
+        content.add(Box.createVerticalStrut(10));
+
+        JTextArea outro = instructionText("Use them wisely. Once they're gone, they're gone.",
+                15, 800, 24);
+        outro.setName("lifelineOutroText");
+        content.add(outro);
+
+        card.add(content, BorderLayout.CENTER);
+
+        JButton back = outlineButton("Back");
+        back.setName("instructionsBack2");
+        back.setMnemonic(KeyEvent.VK_B);
+        back.addActionListener(event -> { playBackSound(); showInstructionsScreen(); });
+        JButton next = outlineButton("Next");
+        next.setName("instructionsNext2");
+        next.setEnabled(false);
+        card.add(buildInstructionsNavBar(back, next, "instructionsHome2"), BorderLayout.SOUTH);
+        return centeredPage(card);
+    }
+
+    /** A compact, read-only rendering of the prize ladder for the instructions screen. */
+    private JPanel buildInstructionsLadder() {
+        JPanel ladder = panel(new BorderLayout(), 10);
+        ladder.setName("instructionsLadder");
+        ladder.setBackground(PANEL_DARK);
+        JPanel rows = new JPanel();
+        rows.setOpaque(false);
+        rows.setLayout(new BoxLayout(rows, BoxLayout.Y_AXIS));
+        for (int slot = PrizeLadder.totalSlots(); slot >= 1; slot--) {
+            boolean current = slot == 1;
+            boolean checkpoint = PrizeLadder.isCheckpoint(slot);
+            Color rowColor = current ? BLUE : checkpoint ? GOLD : PANEL_DARK;
+            Color rowText = checkpoint && !current ? BACKGROUND : TEXT;
+            JPanel row = new LadderRow(current, checkpoint);
+            row.setName("instructionsLadderQ" + slot);
+            row.setBackground(rowColor);
+            row.setBorder(new EmptyBorder(2, 10, 2, 10));
+            JLabel number = label(Integer.toString(slot), 13, true, rowText);
+            JLabel value = label(money(PrizeLadder.prizeFor(slot)), 13, true, rowText);
+            row.add(number, BorderLayout.WEST);
+            row.add(value, BorderLayout.EAST);
+            row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
+            rows.add(row);
+            rows.add(Box.createVerticalStrut(1));
+        }
+        ladder.add(rows, BorderLayout.CENTER);
+        return ladder;
+    }
+
+    /** Back/Next pager plus a home button that always returns to the main menu. */
+    private JPanel buildInstructionsNavBar(JButton back, JButton next, String homeName) {
+        back.setPreferredSize(new Dimension(150, 42));
+        next.setPreferredSize(new Dimension(150, 42));
+        JPanel bar = new JPanel(new BorderLayout());
+        bar.setOpaque(false);
+        JPanel pager = new JPanel(new FlowLayout(FlowLayout.CENTER, 14, 0));
+        pager.setOpaque(false);
+        pager.add(back);
+        pager.add(next);
+        bar.add(pager, BorderLayout.CENTER);
+        JPanel homeSlot = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        homeSlot.setOpaque(false);
+        HomeButton home = new HomeButton();
+        home.setName(homeName);
+        home.setToolTipText("Back to main menu");
+        home.addActionListener(event -> { playBackSound(); showMainMenu(); });
+        homeSlot.add(home);
+        bar.add(homeSlot, BorderLayout.EAST);
+        return bar;
+    }
+
+    private static JTextArea instructionText(String text, int size, int width, int height) {
         JTextArea area = textArea(size, false);
         area.setText(text);
         area.setEditable(false);
         area.setFocusable(false);
         area.setOpaque(false);
         area.setAlignmentX(0);
-        area.setPreferredSize(new Dimension(760, height));
+        area.setPreferredSize(new Dimension(width, height));
         area.setMaximumSize(new Dimension(Integer.MAX_VALUE, height));
         return area;
     }
 
     private static void addInstructionBullet(JPanel content, String name,
-            String text, int height) {
-        JTextArea bullet = instructionText(text, 16, height);
+            String text, int width, int height) {
+        JTextArea bullet = instructionText(text, 15, width, height);
         bullet.setName(name);
         content.add(bullet);
     }
@@ -619,7 +744,12 @@ public final class SwingUI {
     }
 
     private void showInstructionsScreen() {
-        showScreen("instructions", true);
+        showScreen("instructions1", true);
+        frame.getRootPane().setDefaultButton(null);
+    }
+
+    private void showInstructionsScreen2() {
+        showScreen("instructions2", true);
         frame.getRootPane().setDefaultButton(null);
     }
 
@@ -1789,6 +1919,59 @@ public final class SwingUI {
             g.setColor(MUTED);
             int subtitleY = titleY + subMetrics.getHeight() + 2;
             g.drawString(subtitle, (getWidth() - subMetrics.stringWidth(subtitle)) / 2, subtitleY);
+            g.dispose();
+        }
+    }
+
+    /** The white, round home button that returns to the main menu from the instructions. */
+    private static final class HomeButton extends JButton {
+        HomeButton() {
+            setOpaque(false);
+            setContentAreaFilled(false);
+            setBorderPainted(false);
+            setFocusPainted(false);
+            setRolloverEnabled(true);
+            setPreferredSize(new Dimension(44, 44));
+            setMaximumSize(new Dimension(44, 44));
+            setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
+        }
+
+        @Override
+        protected void paintComponent(Graphics graphics) {
+            Graphics2D g = (Graphics2D) graphics.create();
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            boolean hover = getModel().isRollover();
+            Color fill = hover ? Color.WHITE : new Color(240, 244, 252);
+            int d = Math.min(getWidth(), getHeight()) - 2;
+            int x = (getWidth() - d) / 2;
+            int y = (getHeight() - d) / 2;
+            g.setColor(fill);
+            g.fillOval(x, y, d, d);
+            g.setColor(isFocusOwner() ? GOLD : BORDER);
+            g.setStroke(new BasicStroke(isFocusOwner() ? 2f : 1.2f));
+            g.drawOval(x, y, d - 1, d - 1);
+
+            int cx = x + d / 2;
+            int cy = y + d / 2;
+            int half = (int) Math.round(d * 0.20);
+            int roofTop = cy - (int) Math.round(d * 0.26);
+            int baseTop = cy - (int) Math.round(d * 0.02);
+            int baseBottom = cy + (int) Math.round(d * 0.22);
+            Path2D house = new Path2D.Double();
+            house.moveTo(cx - half - 4, baseTop);
+            house.lineTo(cx, roofTop);
+            house.lineTo(cx + half + 4, baseTop);
+            house.lineTo(cx + half, baseTop);
+            house.lineTo(cx + half, baseBottom);
+            house.lineTo(cx - half, baseBottom);
+            house.lineTo(cx - half, baseTop);
+            house.closePath();
+            g.setColor(BACKGROUND);
+            g.fill(house);
+            int doorWidth = Math.max(3, (int) Math.round(d * 0.09));
+            int doorHeight = (int) Math.round(d * 0.14);
+            g.setColor(fill);
+            g.fillRect(cx - doorWidth / 2, baseBottom - doorHeight, doorWidth, doorHeight);
             g.dispose();
         }
     }
