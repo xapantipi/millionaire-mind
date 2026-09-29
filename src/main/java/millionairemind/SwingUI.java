@@ -135,7 +135,9 @@ public final class SwingUI {
     private JButton startButton;
     private JPanel resultsPage;
     private Clip backgroundMusic;
+    private String backgroundMusicResource;
     private Clip splashAudio;
+    private Clip resultsAudio;
     private SplashOverlay splashOverlay;
     private Timer splashHoldTimer;
     private Timer splashFadeTimer;
@@ -149,6 +151,12 @@ public final class SwingUI {
     private static final String SFX_ANSWER_SELECT = "select_005.wav";
     private static final String SFX_CORRECT_ANSWER = "confirmation_004.wav";
     private static final String SFX_ACTION_ERROR = "error_006.wav";
+    private static final String SFX_WRONG_ANSWER = "wrong.WAV";
+    private static final String SFX_REGULAR_WIN = "regular winning.WAV";
+    private static final String SFX_SUPREME_VICTORY = "supreme victory.WAV";
+    private static final String SFX_NO_CHECKPOINT = "Clapping Sound Effects.WAV";
+    private static final String CHECKPOINT_MUSIC = "checkpoint-suspense.wav";
+    private static final String GAMEPLAY_MUSIC = "gameplay-theme.wav";
 
     private Image splashImage;
 
@@ -211,6 +219,7 @@ public final class SwingUI {
     // linger after the window closes, then shuts the JVM down.
     private void exitApplication() {
         stopBackgroundMusic();
+        stopResultsAudio();
         frame.dispose();
         System.exit(0);
     }
@@ -964,6 +973,7 @@ public final class SwingUI {
         continueButton.setMnemonic(KeyEvent.VK_C);
         continueButton.setPreferredSize(new Dimension(220, 54));
         continueButton.addActionListener(event -> {
+            playProgressSound();
             if (engine.isGameOver()) finishGame();
             else {
                 renderQuestion();
@@ -1004,6 +1014,7 @@ public final class SwingUI {
         walkButton.setMnemonic(KeyEvent.VK_W);
         walkButton.setMaximumSize(new Dimension(Integer.MAX_VALUE, 45));
         walkButton.addActionListener(event -> {
+            playProgressSound();
             stopQuestionTimer();
             engine.walkAway();
             finishGame();
@@ -1092,6 +1103,8 @@ public final class SwingUI {
         boolean correct = outcome == GameEngine.AnswerOutcome.CORRECT;
         if (correct) {
             playSfx(SFX_CORRECT_ANSWER);
+        } else {
+            playSfx(SFX_WRONG_ANSWER);
         }
         feedbackTitle.setText(outcome == GameEngine.AnswerOutcome.CORRECT
                 ? "Correct answer" : "Incorrect answer");
@@ -1270,7 +1283,10 @@ public final class SwingUI {
     private void tickTimer() {
         secondsRemaining--;
         if (secondsRemaining <= 0) {
-            stopQuestionTimer();
+            if (questionTimer != null) {
+                questionTimer.stop();
+                questionTimer = null;
+            }
             handleTimeExpired();
             return;
         }
@@ -1289,6 +1305,40 @@ public final class SwingUI {
         }
     }
 
+    private void playResultsSound(String fileName) {
+        stopResultsAudio();
+        URL url = resolveAudioResource("/sfx/" + fileName, "resources/sfx/" + fileName);
+        if (url == null) {
+            System.err.println("Results sound not found: " + fileName);
+            return;
+        }
+        try (AudioInputStream audioStream = AudioSystem.getAudioInputStream(url)) {
+            Clip clip = AudioSystem.getClip();
+            clip.addLineListener(event -> {
+                if (event.getType() == LineEvent.Type.STOP) {
+                    if (resultsAudio == clip) resultsAudio = null;
+                    clip.close();
+                }
+            });
+            clip.open(audioStream);
+            resultsAudio = clip;
+            clip.start();
+        } catch (UnsupportedAudioFileException | IOException | LineUnavailableException e) {
+            resultsAudio = null;
+            System.err.println("Could not play results sound " + fileName + ": " + e.getMessage());
+        }
+    }
+
+    private void stopResultsAudio() {
+        if (resultsAudio != null) {
+            Clip clip = resultsAudio;
+            resultsAudio = null;
+            clip.stop();
+            clip.flush();
+            clip.close();
+        }
+    }
+
     private void handleTimeExpired() {
         if (engine.isGameOver()) return;
         Question resolved = engine.currentQuestion();
@@ -1303,6 +1353,7 @@ public final class SwingUI {
         showScreen("feedback", false);
         frame.getRootPane().setDefaultButton(continueButton);
         continueButton.requestFocusInWindow();
+        playSfx(SFX_WRONG_ANSWER);
     }
 
     private void refreshAnswerButtons() {
@@ -1356,6 +1407,14 @@ public final class SwingUI {
 
     private void finishGame() {
         stopQuestionTimer();
+        PlayerSession session = engine.session();
+        if (session.becameMillionaire()) {
+            playResultsSound(SFX_SUPREME_VICTORY);
+        } else if (session.bankedWinnings() >= PrizeLadder.prizeFor(5)) {
+            playResultsSound(SFX_REGULAR_WIN);
+        } else {
+            playResultsSound(SFX_NO_CHECKPOINT);
+        }
         Path logPath = null;
         String logError = null;
         try {
@@ -1442,7 +1501,10 @@ public final class SwingUI {
             openLog.getAccessibleContext().setAccessibleDescription(
                     "Open session replay file " + logPath.getFileName());
             openLog.setAlignmentX(Component.CENTER_ALIGNMENT);
-            openLog.addActionListener(event -> openReplay(logPath, logStatus));
+            openLog.addActionListener(event -> {
+                playProgressSound();
+                openReplay(logPath, logStatus);
+            });
             details.add(openLog);
         }
         card.add(details, BorderLayout.CENTER);
@@ -2209,8 +2271,18 @@ public final class SwingUI {
     }
 
     private void showScreen(String screen, boolean playBackgroundMusic) {
-        if (playBackgroundMusic) {
-            startBackgroundMusic();
+        if (!"results".equals(screen)) stopResultsAudio();
+        if ("game".equals(screen) && engine != null) {
+            if (PrizeLadder.isCheckpoint(engine.currentSlot())
+                    || engine.currentSlot() == PrizeLadder.totalSlots()) {
+                startBackgroundMusic("/" + CHECKPOINT_MUSIC,
+                        "resources/sfx/suspense.WAV");
+            } else {
+                startBackgroundMusic("/" + GAMEPLAY_MUSIC,
+                        "resources/sfx/q12.WAV");
+            }
+        } else if (playBackgroundMusic) {
+            startBackgroundMusic("/bg.wav", "resources/bg.wav");
         } else {
             stopBackgroundMusic();
         }
@@ -2238,14 +2310,19 @@ public final class SwingUI {
     }
 
     private void startBackgroundMusic() {
-        if (backgroundMusic != null && backgroundMusic.isRunning()) {
+        startBackgroundMusic("/bg.wav", "resources/bg.wav");
+    }
+
+    private void startBackgroundMusic(String classpathResource, String filePath) {
+        if (backgroundMusic != null && backgroundMusic.isRunning()
+                && classpathResource.equals(backgroundMusicResource)) {
             return;
         }
         stopBackgroundMusic();
 
-        URL url = resolveAudioResource("/bg.wav", "resources/bg.wav");
+        URL url = resolveAudioResource(classpathResource, filePath);
         if (url == null) {
-            System.err.println("Background music not found on classpath or in resources/bg.wav");
+            System.err.println("Background music not found: " + classpathResource + " or " + filePath);
             return;
         }
 
@@ -2274,6 +2351,7 @@ public final class SwingUI {
                     clip.loop(Clip.LOOP_CONTINUOUSLY);
                     clip.start();
                     backgroundMusic = clip;
+                    backgroundMusicResource = classpathResource;
                 } catch (LineUnavailableException e) {
                     clip.close();
                     throw e;
@@ -2302,6 +2380,7 @@ public final class SwingUI {
             backgroundMusic.flush();
             backgroundMusic.close();
             backgroundMusic = null;
+            backgroundMusicResource = null;
         }
     }
 

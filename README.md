@@ -34,13 +34,22 @@ cards. For unusually long text, the Swing view reduces its text size to fit
 the display.
 The Swing screens use a navy node theme, a question-progress strip, and
 color-coded prize checkpoints. `resources/bg.wav` loops on the menu,
-instructions, mode selection, and name screens, and stops for gameplay,
-feedback, and results. `resources/sfx/niera_sound_5.wav` plays on buttons
-that advance toward the game loop or open Instructions, and
+instructions, mode selection, and name screens. `resources/sfx/suspense.WAV`
+loops during checkpoint questions (Q5, Q10, and Q15). `resources/sfx/q12.WAV`
+loops during other gameplay questions. Both game tracks stop for
+feedback and results. At zero in Timed Mode, the game displays the time's-up
+feedback screen and plays `resources/sfx/wrong.WAV`.
+`resources/sfx/niera_sound_5.wav` plays on buttons that
+advance toward the game loop or open Instructions, and
 `resources/sfx/niera_sound_2.wav` plays on buttons that return to the main
 menu. `resources/sfx/select_005.wav` plays when selecting an answer and
 locking it in, `resources/sfx/confirmation_004.wav` plays for a correct
-answer. `resources/sfx/error_006.wav` plays when an attempted action cannot
+answer, and `resources/sfx/wrong.WAV` plays for a wrong answer. On the results
+screen, `resources/sfx/supreme victory.WAV` plays for winning the $1,000,000
+prize, `resources/sfx/regular winning.WAV` plays when the player banks at
+least $2,000, and `resources/sfx/Clapping Sound Effects.WAV` plays when they
+finish without reaching the first checkpoint. `resources/sfx/error_006.wav`
+plays when an attempted action cannot
 proceed, such as starting without a name or trying to reuse a spent lifeline.
 Spent lifelines keep their disabled appearance but can be clicked to play the
 error sound and show a notice. Successfully using a lifeline plays
@@ -72,6 +81,8 @@ To launch Swing manually with its background and splash audio/assets:
 javac --release 17 -d out-swing $(find src/main/java -name "*.java" -not -name "ConsoleUI.java")
 cp "resources/Question Bank.csv" out-swing/questions.csv
 cp "resources/bg.wav" out-swing/bg.wav
+cp "resources/sfx/suspense.WAV" out-swing/checkpoint-suspense.wav
+cp "resources/sfx/q12.WAV" out-swing/gameplay-theme.wav
 cp "resources/splash.gif" out-swing/splash.gif
 cp "resources/splash.wav" out-swing/splash.wav
 mkdir -p out-swing/sfx
@@ -80,10 +91,15 @@ cp "resources/sfx/niera_sound_2.wav" out-swing/sfx/niera_sound_2.wav
 cp "resources/sfx/select_005.wav" out-swing/sfx/select_005.wav
 cp "resources/sfx/confirmation_004.wav" out-swing/sfx/confirmation_004.wav
 cp "resources/sfx/error_006.wav" out-swing/sfx/error_006.wav
+cp "resources/sfx/wrong.WAV" out-swing/sfx/wrong.WAV
+cp "resources/sfx/regular winning.WAV" "out-swing/sfx/regular winning.WAV"
+cp "resources/sfx/supreme victory.WAV" "out-swing/sfx/supreme victory.WAV"
+cp "resources/sfx/Clapping Sound Effects.WAV" "out-swing/sfx/Clapping Sound Effects.WAV"
 java -cp out-swing millionairemind.SwingUI
 ```
 
-`SwingUI` also falls back to reading `bg.wav` and the `sfx/` sounds straight
+`SwingUI` also falls back to reading `bg.wav`, both gameplay music tracks,
+and the `sfx/` sounds straight
 from `resources/` on disk (relative to the working directory) if they were
 not copied onto the classpath, so a manual run still gets sound even if a
 copy step is skipped.
@@ -120,8 +136,14 @@ src/main/java/millionairemind/
 resources/
   Question Bank.csv       Official source question bank (see format below)
   bg.wav                  Background music for non-gameplay Swing screens
+  sfx/suspense.WAV       Checkpoint-question music
+  sfx/q12.WAV            Other gameplay music
   sfx/niera_sound_5.wav   Click sound for buttons progressing to the game/instructions
   sfx/niera_sound_2.wav   Click sound for buttons returning to the main menu
+  sfx/wrong.WAV           Incorrect-answer sound
+  sfx/regular winning.WAV Result sound after passing the first checkpoint
+  sfx/supreme victory.WAV Millionaire win sound
+  sfx/Clapping Sound Effects.WAV Result sound without a checkpoint
 ```
 
 This mirrors the "Backend Architecture (Java)" section of the proposal
