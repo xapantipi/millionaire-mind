@@ -78,24 +78,7 @@ java -cp out millionairemind.ConsoleUI
 To launch Swing manually with its background and splash audio/assets:
 
 ```bash
-javac --release 17 -d out-swing $(find src/main/java -name "*.java" -not -name "ConsoleUI.java")
-cp "resources/Question Bank.csv" out-swing/questions.csv
-cp "resources/bg.wav" out-swing/bg.wav
-cp "resources/sfx/suspense.WAV" out-swing/checkpoint-suspense.wav
-cp "resources/sfx/q12.WAV" out-swing/gameplay-theme.wav
-cp "resources/splash.gif" out-swing/splash.gif
-cp "resources/splash.wav" out-swing/splash.wav
-mkdir -p out-swing/sfx
-cp "resources/sfx/niera_sound_5.wav" out-swing/sfx/niera_sound_5.wav
-cp "resources/sfx/niera_sound_2.wav" out-swing/sfx/niera_sound_2.wav
-cp "resources/sfx/select_005.wav" out-swing/sfx/select_005.wav
-cp "resources/sfx/confirmation_004.wav" out-swing/sfx/confirmation_004.wav
-cp "resources/sfx/error_006.wav" out-swing/sfx/error_006.wav
-cp "resources/sfx/wrong.WAV" out-swing/sfx/wrong.WAV
-cp "resources/sfx/regular winning.WAV" "out-swing/sfx/regular winning.WAV"
-cp "resources/sfx/supreme victory.WAV" "out-swing/sfx/supreme victory.WAV"
-cp "resources/sfx/Clapping Sound Effects.WAV" "out-swing/sfx/Clapping Sound Effects.WAV"
-java -cp out-swing millionairemind.SwingUI
+javac --release 17 -d out-swing $(find src/main/java -name "*.java" -not -name "ConsoleUI.java") && mkdir -p out-swing/sfx && cp "resources/Question Bank.csv" out-swing/questions.csv && cp "resources/bg.wav" out-swing/bg.wav && cp "resources/sfx/suspense.WAV" out-swing/checkpoint-suspense.wav && cp "resources/sfx/q12.WAV" out-swing/gameplay-theme.wav && cp "resources/splash.gif" out-swing/splash.gif && cp "resources/splash.wav" out-swing/splash.wav && cp "resources/sfx/niera_sound_5.wav" out-swing/sfx/niera_sound_5.wav && cp "resources/sfx/niera_sound_2.wav" out-swing/sfx/niera_sound_2.wav && cp "resources/sfx/select_005.wav" out-swing/sfx/select_005.wav && cp "resources/sfx/confirmation_004.wav" out-swing/sfx/confirmation_004.wav && cp "resources/sfx/error_006.wav" out-swing/sfx/error_006.wav && cp "resources/sfx/wrong.WAV" out-swing/sfx/wrong.WAV && cp "resources/sfx/regular winning.WAV" "out-swing/sfx/regular winning.WAV" && cp "resources/sfx/supreme victory.WAV" "out-swing/sfx/supreme victory.WAV" && cp "resources/sfx/Clapping Sound Effects.WAV" "out-swing/sfx/Clapping Sound Effects.WAV" && java -cp out-swing millionairemind.SwingUI
 ```
 
 `SwingUI` also falls back to reading `bg.wav`, both gameplay music tracks,
