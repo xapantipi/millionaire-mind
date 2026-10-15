@@ -43,7 +43,7 @@ public final class QuestionBank {
         }
     }
 
-    /** Loads from a classpath resource, e.g. "/questions.csv". */
+    /** Loads from a classpath resource, e.g. "/MCQ/Question Bank.csv". */
     public static QuestionBank loadFromResource(String resourcePath, RandomGenerator random) throws IOException {
         QuestionBank bank = new QuestionBank(random);
         try (InputStream in = QuestionBank.class.getResourceAsStream(resourcePath)) {
@@ -92,6 +92,11 @@ public final class QuestionBank {
         }
 
         validateMinimumQuestionCounts();
+        try {
+            new ModuleBalancedSelection(byLevel, null).validate();
+        } catch (IllegalArgumentException e) {
+            throw new IOException(e.getMessage(), e);
+        }
     }
 
     private void parseQuestion(CsvRecord record, Set<String> ids) throws IOException {
@@ -170,8 +175,17 @@ public final class QuestionBank {
                 newCorrectIndex, q.hint(), q.sourceReading(), q.pageNumber());
     }
 
-    public int unusedCount(BloomLevel level, Set<String> usedIds) {
-        return (int) byLevel.get(level).stream().filter(q -> !usedIds.contains(q.id())).count();
+    public List<Question> drawGameQuestions() {
+        return new ModuleBalancedSelection(byLevel, random).select().stream().map(this::shuffleOptions).toList();
+    }
+
+    public Question drawAlternate(BloomLevel level, String module, Set<String> excluded) {
+        List<Question> pool = byLevel.get(level).stream()
+                .filter(q -> q.module().equals(module) && !excluded.contains(q.id())).toList();
+        if (pool.isEmpty()) {
+            throw new IllegalStateException("No spare question remains for this Bloom level and module");
+        }
+        return shuffleOptions(pool.get(random.nextInt(pool.size())));
     }
 
     private void validateMinimumQuestionCounts() throws IOException {

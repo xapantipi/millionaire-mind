@@ -19,6 +19,7 @@ public final class GameEngine {
     private final Set<String> usedQuestionIds = new HashSet<>();
     private final boolean[] visibleOptions = new boolean[4];
     private final boolean timedMode;
+    private final java.util.List<Question> questionPlan;
     private int secondsRemaining;
 
     private int currentSlot = 1; // 1-indexed, 1-15
@@ -35,13 +36,13 @@ public final class GameEngine {
         this.lifelineManager = new LifelineManager(random);
         this.session = new PlayerSession(playerName);
         this.timedMode = timedMode;
+        this.questionPlan = questionBank.drawGameQuestions();
         resetVisibleOptions();
         drawCurrentQuestion();
     }
 
     private void drawCurrentQuestion() {
-        BloomLevel level = BloomLevel.forSlot(currentSlot);
-        this.currentQuestion = questionBank.drawQuestion(level, usedQuestionIds);
+        this.currentQuestion = questionPlan.get(currentSlot - 1);
         usedQuestionIds.add(currentQuestion.id());
         secondsRemaining = timedMode ? TIMER_SECONDS : 0;
     }
@@ -186,10 +187,9 @@ public final class GameEngine {
             throw new IllegalStateException("SWITCH_QUESTION has already been used this game");
         }
         BloomLevel level = currentLevel();
-        if (questionBank.unusedCount(level, usedQuestionIds) <= remainingSlotsForLevel(level)) {
-            throw new IllegalStateException("No spare question remains for this level");
-        }
-        Question replacement = questionBank.drawAlternate(level, usedQuestionIds);
+        Set<String> reserved = new HashSet<>(usedQuestionIds);
+        for (Question question : questionPlan) reserved.add(question.id());
+        Question replacement = questionBank.drawAlternate(level, currentQuestion.module(), reserved);
         lifelineManager.useSwitchQuestion();
         usedQuestionIds.add(replacement.id());
         this.currentQuestion = replacement;
@@ -198,11 +198,4 @@ public final class GameEngine {
         return replacement;
     }
 
-    private int remainingSlotsForLevel(BloomLevel level) {
-        int remaining = 0;
-        for (int slot = currentSlot + 1; slot <= PrizeLadder.totalSlots(); slot++) {
-            if (BloomLevel.forSlot(slot) == level) remaining++;
-        }
-        return remaining;
-    }
 }

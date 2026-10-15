@@ -48,6 +48,25 @@ To use another CSV bank, add its path:
 
 The build compiles every production class together for Java 17 with UTF-8 and creates **`dist/millionaire-mind.jar`**. Only JDK tools are used. The common build driver is `tools/Project.java`; both sets of scripts call it, keeping packaging identical across platforms.
 
+For the assignment's two Windows submission ZIPs, use a Windows JDK that
+includes `jpackage` and run:
+
+```cmd
+release.cmd
+```
+
+This produces `dist/millionaire-mind-source.zip` and
+`dist/millionaire-mind-windows.zip`. Extract the Windows ZIP completely and
+open `MillionaireMind/MillionaireMind.exe`. The adjacent `app` and `runtime`
+folders are required; Java is bundled, so the player needs no Java installation.
+`MillionaireMind-Console.exe` opens terminal gameplay. The unpackaged native
+application is also under `build/windows/MillionaireMind/`.
+
+`ReadMeFirst.txt` includes the required Command Prompt compilation, run,
+test, question-bank, and distribution instructions. Release packaging uses
+[JDK jpackage](https://docs.oracle.com/en/java/javase/21/jpackage/packaging-overview.html)
+in application-image mode, so it needs no third-party installer tools.
+
 Copy the JAR anywhere and run:
 
 ```bash
@@ -67,9 +86,9 @@ Swing opens fullscreen. Click the splash screen or press Enter to skip it. Choos
 - **Console:** untimed; enter A-D, use the displayed lifeline shortcuts, or W to Walk Away. Closing terminal input exits cleanly, banking the checkpoint if a session is active.
 - Answer 15 questions: Q1-2 Remembering, Q3-5 Understanding, Q6-7 Applying, Q8-10 Analyzing, Q11-13 Evaluating, Q14-15 Creating.
 - Prizes range from $100 to $1,000,000. Passing Q5 secures $2,000; passing Q10 secures $64,000. Wrong answers and Walk Away pay the last secured checkpoint, rather than the most recent question's prize.
-- Questions are drawn without repeats within a session. Answer positions are shuffled while preserving the correct answer and citation.
-- Each lifeline can be used once: **50:50** removes wrong options; **Spin the Wheel** has a 45% chance to remove one wrong option, 35% to reduce to at most two choices, and 20% to add 15 seconds in Timed Mode; **Switch the Question** draws another unused question at the same Bloom level and resets the timer to 30 seconds; **Phone a Friend** reveals the authored hint.
-- Combined lifelines never restore hidden choices. A switch is refused without consuming the lifeline when the remaining bank cannot support the replacement and all later questions at that level. Bonus time has no effect in untimed play.
+- Each full round contains five questions from each of Modules 1, 2, and 3, without repeats and with the same Bloom tiers. The round is selected before play to ensure both constraints can be met. Answer positions are shuffled while preserving the correct answer and citation.
+- Each lifeline can be used once: **50:50** removes wrong options; **Spin the Wheel** has a 45% chance to remove one wrong option, 35% to reduce to at most two choices, and 20% to add 15 seconds in Timed Mode; **Switch the Question** draws another unused question at the same Bloom level and module and resets the timer to 30 seconds; **Phone a Friend** reveals the authored hint.
+- Combined lifelines never restore hidden choices. A switch is refused without consuming the lifeline when no spare question is available outside the planned round at that Bloom level and module. Bonus time has no effect in untimed play.
 
 Swing supports Tab navigation, Alt+A through Alt+D for answers, Alt+L to lock, Alt+1 through Alt+4 for lifelines, and Alt+W to Walk Away. Used lifelines remain visibly unavailable and explain their status when clicked.
 
@@ -93,20 +112,21 @@ The default suite tests CSV loading and validation, shuffled answers, game rules
 
 ## Question bank
 
-The editable source is `resources/Question Bank.csv`, currently containing 72 questions. The build packages it as `/questions.csv`. Preserve this header:
+The editable source is `MCQ/Question Bank.csv`, currently containing 72 questions. The build packages it as `/MCQ/Question Bank.csv`. Preserve this header:
 
 ```text
 id,level,prompt,optionA,optionB,optionC,optionD,correctIndex,hint,sourceReading,pageNumber
 ```
 
-`level` must be REMEMBERING, UNDERSTANDING, APPLYING, ANALYZING, EVALUATING, or CREATING. `correctIndex` is zero-based: 0=A, 1=B, 2=C, 3=D. All four options, a hint, and source information are required. IDs must be unique. The loader validates the complete bank before play and requires enough questions for each level's slots. Include spare questions to support switching.
+`level` must be REMEMBERING, UNDERSTANDING, APPLYING, ANALYZING, EVALUATING, or CREATING. `correctIndex` is zero-based: 0=A, 1=B, 2=C, 3=D. All four options, a hint, and source information are required. IDs must be unique. The loader validates the complete bank before play and requires enough questions for each level's slots. Include spare questions to support switching. Modules are derived from the existing `sourceReading` prefix (`Module N / Reading.pdf`); no new column is used. Multi-module banks must label every source consistently, the module count must divide 15, and the pool must support all Bloom tiers with equal module quotas. Incompatible pools fail validation before play. A custom bank with no module prefixes is treated as one unspecified module. See `MCQ/README.md` for checking details.
 
 Standard CSV quoting is supported: quote fields containing commas, quotes, or line breaks and double embedded quotes. A quoted multiline field is one record even when it spans several physical lines.
 
 ## Code responsibilities
 
 - `Question` and `BloomLevel`: question data and level mapping.
-- `QuestionBank`: CSV parsing/validation, unused-question selection, and answer shuffling.
+- `QuestionBank`: CSV validation, module-balanced round selection, spare-question selection, and answer shuffling.
+- `ModuleBalancedSelection`: allocates Bloom slots to module quotas using a small capacity graph, avoiding greedy choices that could leave later slots unfillable.
 - `GameEngine`: progression, visible choices, countdown rules, checkpoints, and payouts.
 - `LifelineManager`: lifeline availability and randomized outcomes.
 - `PlayerSession`: answer history and Bloom reporting.

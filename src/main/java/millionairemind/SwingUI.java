@@ -161,7 +161,7 @@ public final class SwingUI {
         try {
             QuestionBank bank = args.length > 0
                     ? QuestionBank.loadFromFile(Paths.get(args[0]), random)
-                    : QuestionBank.loadFromResource("/questions.csv", random);
+                    : QuestionBank.loadFromResource("/MCQ/Question Bank.csv", random);
             ReplayLogger logger = new ReplayLogger(Paths.get("logs"));
             SwingUtilities.invokeAndWait(() -> new SwingUI(bank, random, logger).show());
         } catch (InterruptedException e) {
@@ -572,7 +572,7 @@ public final class SwingUI {
         content.add(Box.createVerticalStrut(10));
         addInstructionBullet(content, "lifelineInstruction2",
                 "•  Switch the Question – Don't like the question? Swap it for another "
-                + "one from the same Bloom's level.", 900, 60);
+                + "one from the same Bloom's level and module.", 900, 60);
         content.add(Box.createVerticalStrut(10));
         addInstructionBullet(content, "lifelineInstruction3",
                 "•  Phone a Friend – Get a hint to help you figure out the answer.", 900, 36);
@@ -1204,7 +1204,7 @@ public final class SwingUI {
                     startOrStopQuestionTimer();
                     frame.validate();
                     fitQuestionContent();
-                    noticeText.setText("New question from the same Bloom level.");
+                    noticeText.setText("New question from the same Bloom level and module.");
                 }
                 case 3 -> noticeText.setText("Phone a Friend: " + engine.usePhoneAFriend());
                 default -> throw new IllegalArgumentException("Unknown lifeline");
@@ -1306,6 +1306,7 @@ public final class SwingUI {
             answerGrid.setMaximumSize(new Dimension(Integer.MAX_VALUE, gridHeight));
             answerGrid.revalidate();
         }
+        frame.validate();
     }
 
     private void adjustAnswerGridHeight() {

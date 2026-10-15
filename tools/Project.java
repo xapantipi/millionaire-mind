@@ -8,6 +8,8 @@ import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 import javax.tools.ToolProvider;
 
 /** Shared Windows/Bash build driver; runs in JDK source-file mode. */
@@ -27,19 +29,20 @@ public final class Project {
             Project project = new Project(Path.of(args[0]));
             String action = args[1];
             List<String> options = List.of(args).subList(2, args.length);
-            if (!List.of("build", "run", "test").contains(action)) {
+            if (!List.of("build", "run", "test", "release").contains(action)) {
                 throw new IllegalArgumentException("Unknown action: " + action);
             }
             if (action.equals("test") && !(options.isEmpty() || options.equals(List.of("--gui")))) {
                 throw new IllegalArgumentException("Usage: test.cmd [--gui] or ./test.sh [--gui]");
             }
-            if (action.equals("build") && !options.isEmpty()) {
-                throw new IllegalArgumentException("Build takes no arguments.");
+            if ((action.equals("build") || action.equals("release")) && !options.isEmpty()) {
+                throw new IllegalArgumentException("Build/release take no arguments.");
             }
             project.build();
             int result = switch (action) {
                 case "run" -> project.runGame(options);
                 case "test" -> project.test(options.contains("--gui"));
+                case "release" -> project.release();
                 default -> 0;
             };
             if (result != 0) System.exit(result);
@@ -87,7 +90,7 @@ public final class Project {
                     }
                 }
                 Path resources = root.resolve("resources");
-                addEntry(archive, resources.resolve("Question Bank.csv"), "questions.csv");
+                addEntry(archive, root.resolve("MCQ/Question Bank.csv"), "MCQ/Question Bank.csv");
                 try (var files = Files.walk(resources)) {
                     for (Path file : files.filter(Files::isRegularFile).sorted().toList()) {
                         String name = resources.relativize(file).toString().replace('\\', '/');
@@ -146,6 +149,97 @@ public final class Project {
         return Path.of(System.getProperty("java.home"), "bin", windows ? "java.exe" : "java").toString();
     }
 
+    private int release() throws IOException, InterruptedException {
+        if (!System.getProperty("os.name").startsWith("Windows")) {
+            throw new IOException("Create the Windows submission on Windows using JDK 17+ and release.cmd.");
+        }
+        Path jpackage = Path.of(System.getProperty("java.home"), "bin", "jpackage.exe");
+        if (!Files.isRegularFile(jpackage)) throw new IOException("This JDK does not include jpackage.exe.");
+        test(false);
+        Path input = build.resolve("native-input");
+        Path windows = build.resolve("windows");
+        clean(input);
+        clean(windows);
+        Files.createDirectories(input);
+        Files.createDirectories(windows);
+        Files.copy(jar, input.resolve(jar.getFileName()));
+        Path consoleProperties = build.resolve("console-launcher.properties");
+        Files.writeString(consoleProperties, "arguments=--console\nwin-console=true\n");
+        List<String> command = List.of(jpackage.toString(), "--type", "app-image", "--name", "MillionaireMind",
+                "--app-version", "1.0", "--description", "AI fundamentals quiz across Bloom's Taxonomy",
+                "--input", input.toString(), "--main-jar", jar.getFileName().toString(),
+                "--main-class", "millionairemind.Main", "--dest", windows.toString(),
+                "--add-modules", "java.desktop,jdk.random", "--java-options", "-Dfile.encoding=UTF-8",
+                "--add-launcher", "MillionaireMind-Console=" + consoleProperties);
+        Process packaging = new ProcessBuilder(command).inheritIO().start();
+        if (!packaging.waitFor(5, java.util.concurrent.TimeUnit.MINUTES)) {
+            packaging.destroyForcibly();
+            throw new IOException("Windows packaging timed out.");
+        }
+        if (packaging.exitValue() != 0) throw new IOException("Windows packaging failed.");
+        Path image = windows.resolve("MillionaireMind");
+        Files.copy(root.resolve("ReadMeFirst.txt"), image.resolve("ReadMeFirst.txt"));
+        verifyNativeConsole(image);
+
+        List<Path> sourceFiles = new ArrayList<>();
+        for (String directory : List.of("src", "MCQ", "resources", "tools", "docs")) {
+            try (var files = Files.walk(root.resolve(directory))) {
+                sourceFiles.addAll(files.filter(Files::isRegularFile).sorted().toList());
+            }
+        }
+        for (String name : List.of("README.md", "ReadMeFirst.txt", ".gitattributes", ".gitignore",
+                "build.cmd", "build.sh", "run.cmd", "run.sh", "test.cmd", "test.sh", "release.cmd",
+                "run-swing.cmd", "run-swing.ps1", "run-swing.sh")) {
+            sourceFiles.add(root.resolve(name));
+        }
+        Path sourceZip = jar.getParent().resolve("millionaire-mind-source.zip");
+        zip(sourceZip, root, "MillionaireMind-source/", sourceFiles);
+        Path executableZip = jar.getParent().resolve("millionaire-mind-windows.zip");
+        try (var files = Files.walk(image)) {
+            zip(executableZip, image, "MillionaireMind/", files.filter(Files::isRegularFile).sorted().toList());
+        }
+        System.out.println("Source submission: " + sourceZip);
+        System.out.println("Windows submission: " + executableZip);
+        System.out.println("Standalone game: " + image.resolve("MillionaireMind.exe"));
+        return 0;
+    }
+
+    private void verifyNativeConsole(Path image) throws IOException, InterruptedException {
+        Path output = build.resolve("native-smoke-output.txt");
+        ProcessBuilder command = new ProcessBuilder(image.resolve("MillionaireMind-Console.exe").toString())
+                .directory(build.toFile()).redirectErrorStream(true).redirectOutput(output.toFile());
+        command.environment().remove("JAVA_HOME");
+        command.environment().put("PATH", Path.of(System.getenv("SystemRoot"), "System32").toString());
+        Process game = command.start();
+        try (var input = game.getOutputStream()) {
+            input.write("3\n".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
+        if (!game.waitFor(30, java.util.concurrent.TimeUnit.SECONDS)) {
+            game.destroyForcibly();
+            throw new IOException("Standalone executable failed to finish its smoke test.");
+        }
+        if (game.exitValue() != 0 || !Files.readString(output).contains("Goodbye")) {
+            throw new IOException("Standalone executable failed: " + Files.readString(output));
+        }
+        System.out.println("Standalone EXE passed with JAVA_HOME unset and Java removed from PATH.");
+    }
+
+    private static void zip(Path output, Path base, String prefix, List<Path> files) throws IOException {
+        Path staged = Files.createTempFile(output.getParent(), "submission-", ".zip");
+        try {
+            try (ZipOutputStream archive = new ZipOutputStream(Files.newOutputStream(staged))) {
+                for (Path file : files) {
+                    ZipEntry entry = new ZipEntry(prefix + base.relativize(file).toString().replace('\\', '/'));
+                    entry.setTime(0);
+                    archive.putNextEntry(entry);
+                    Files.copy(file, archive);
+                    archive.closeEntry();
+                }
+            }
+            Files.move(staged, output, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        } finally { Files.deleteIfExists(staged); }
+    }
+
     private void clean(Path directory) throws IOException {
         Path target = directory.toAbsolutePath().normalize();
         if (!target.startsWith(build) || target.equals(build)) {
@@ -153,7 +247,13 @@ public final class Project {
         }
         if (!Files.exists(target)) return;
         try (var files = Files.walk(target)) {
-            for (Path file : files.sorted(Comparator.reverseOrder()).toList()) Files.delete(file);
+            for (Path file : files.sorted(Comparator.reverseOrder()).toList()) {
+                // jpackage marks generated Windows launchers read-only.
+                if (System.getProperty("os.name").startsWith("Windows") && !Files.isSymbolicLink(file)) {
+                    Files.setAttribute(file, "dos:readonly", false, java.nio.file.LinkOption.NOFOLLOW_LINKS);
+                }
+                Files.delete(file);
+            }
         }
     }
 }

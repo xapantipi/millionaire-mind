@@ -148,7 +148,7 @@ public final class SwingUITest {
     private static void playsToCheckpointAndLogsWalkAway(Path logDirectory, Path preview,
             Path namePreview, Path feedbackPreview, Path resultsPreview, Path fiftyPreview)
             throws Exception {
-        QuestionBank bank = QuestionBank.loadFromResource("/questions.csv", new Random(17));
+        QuestionBank bank = QuestionBank.loadFromResource("/MCQ/Question Bank.csv", new Random(17));
         SwingUI[] holder = new SwingUI[1];
         SwingUtilities.invokeAndWait(() -> {
             SwingUI ui = new SwingUI(bank, cyclingSpinRandom(),
@@ -333,7 +333,7 @@ public final class SwingUITest {
     }
 
     private static void showsBonusTimeAsUntimed(Path logDirectory) throws Exception {
-        QuestionBank bank = QuestionBank.loadFromResource("/questions.csv", new Random(5));
+        QuestionBank bank = QuestionBank.loadFromResource("/MCQ/Question Bank.csv", new Random(5));
         SwingUtilities.invokeAndWait(() -> {
             SwingUI ui = new SwingUI(bank, BackendTestSupport.fixedRandom(0.9, 0),
                     new ReplayLogger(logDirectory));
@@ -352,7 +352,7 @@ public final class SwingUITest {
     }
 
     private static void timedModeUsesBackendAndStopsOnFeedback(Path logDirectory) throws Exception {
-        QuestionBank bank = QuestionBank.loadFromResource("/questions.csv", new Random(25));
+        QuestionBank bank = QuestionBank.loadFromResource("/MCQ/Question Bank.csv", new Random(25));
         SwingUtilities.invokeAndWait(() -> {
             SwingUI ui = new SwingUI(bank, BackendTestSupport.fixedRandom(0.9, 0), new ReplayLogger(logDirectory));
             ui.show();
@@ -390,7 +390,7 @@ public final class SwingUITest {
         var logger = new ReplayLogger(logDirectory);
         Files.delete(logDirectory);
         Files.writeString(logDirectory, "Blocking file");
-        var bank = QuestionBank.loadFromResource("/questions.csv", new Random(9));
+        var bank = QuestionBank.loadFromResource("/MCQ/Question Bank.csv", new Random(9));
         SwingUtilities.invokeAndWait(() -> {
             SwingUI ui = new SwingUI(bank, new Random(9), logger);
             ui.show();
@@ -489,7 +489,7 @@ public final class SwingUITest {
 
     private static void showsWrongAndMillionaireResults(Path logDirectory,
             Path wrongPreview) throws Exception {
-        QuestionBank bank = QuestionBank.loadFromResource("/questions.csv", new Random(21));
+        QuestionBank bank = QuestionBank.loadFromResource("/MCQ/Question Bank.csv", new Random(21));
         SwingUtilities.invokeAndWait(() -> {
             SwingUI ui = new SwingUI(bank, new Random(21), new ReplayLogger(logDirectory));
             ui.show();

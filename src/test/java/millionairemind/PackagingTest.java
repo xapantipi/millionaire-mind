@@ -15,7 +15,7 @@ public final class PackagingTest {
         Path jar = Path.of(Main.class.getProtectionDomain().getCodeSource().getLocation().toURI());
         BackendTestSupport.check(jar.toString().endsWith(".jar"), "tests must exercise the packaged JAR");
         try (JarFile archive = new JarFile(jar.toFile())) {
-            for (String resource : List.of("questions.csv", "splash.gif", "splash.wav", "bg.wav",
+            for (String resource : List.of("MCQ/Question Bank.csv", "splash.gif", "splash.wav", "bg.wav",
                     "sfx/suspense.WAV", "sfx/q12.WAV", "sfx/wrong.WAV",
                     "sfx/regular winning.WAV", "sfx/supreme victory.WAV", "sfx/Clapping Sound Effects.WAV",
                     "sfx/niera_sound_5.wav", "sfx/niera_sound_2.wav", "sfx/select_005.wav",

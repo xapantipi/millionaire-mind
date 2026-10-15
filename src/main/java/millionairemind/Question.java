@@ -4,6 +4,8 @@ import java.util.List;
 
 /** An immutable, source-cited question tagged with a Bloom level. */
 public final class Question {
+    private static final java.util.regex.Pattern MODULE = java.util.regex.Pattern.compile(
+            "^Module\\s+(\\d+)\\s*/", java.util.regex.Pattern.CASE_INSENSITIVE);
 
     private final String id;
     private final BloomLevel level;
@@ -40,6 +42,10 @@ public final class Question {
     public String correctOptionText() { return options.get(correctIndex); }
     public String hint() { return hint; }
     public String sourceReading() { return sourceReading; }
+    public String module() {
+        var match = MODULE.matcher(sourceReading.trim());
+        return match.find() ? "Module " + match.group(1).replaceFirst("^0+(?!$)", "") : "Unspecified";
+    }
     public String pageNumber() { return pageNumber; }
 
     public boolean isCorrect(int chosenIndex) {
