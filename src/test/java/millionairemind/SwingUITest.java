@@ -603,7 +603,7 @@ public final class SwingUITest {
         Component component = find(frame, name, Component.class);
         java.awt.Rectangle bounds = SwingUtilities.convertRectangle(
                 component.getParent(), component.getBounds(), game);
-        check(component.isShowing() && bounds.x >= 0 && bounds.y >= 0
+        check(component.isShowing() && bounds.width > 0 && bounds.height > 0 && bounds.x >= 0 && bounds.y >= 0
                         && bounds.x + bounds.width <= game.getWidth()
                         && bounds.y + bounds.height <= game.getHeight(),
                 name + " should fit in the game view: " + bounds
@@ -614,7 +614,7 @@ public final class SwingUITest {
         Component component = find(frame, name, Component.class);
         java.awt.Rectangle bounds = SwingUtilities.convertRectangle(
                 component.getParent(), component.getBounds(), parent);
-        check(component.isShowing() && bounds.x >= 0 && bounds.y >= 0
+        check(component.isShowing() && bounds.width > 0 && bounds.height > 0 && bounds.x >= 0 && bounds.y >= 0
                         && bounds.x + bounds.width <= parent.getWidth()
                         && bounds.y + bounds.height <= parent.getHeight(),
                 name + " should fit within " + parent.getName() + ": " + bounds

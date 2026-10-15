@@ -1016,7 +1016,7 @@ public final class SwingUI {
         ladder.add(label("Prize ladder", 23, true, TEXT), BorderLayout.NORTH);
 
         ladderRows.setOpaque(false);
-        ladderRows.setLayout(new BoxLayout(ladderRows, BoxLayout.Y_AXIS));
+        ladderRows.setLayout(new GridLayout(PrizeLadder.totalSlots(), 1, 0, 1));
         ladder.add(ladderRows, BorderLayout.CENTER);
 
         JPanel footer = new JPanel();
@@ -1425,13 +1425,11 @@ public final class SwingUI {
             row.setName("ladderQ" + slot);
             row.setBackground(rowColor);
             row.setBorder(new EmptyBorder(2, 11, 2, 11));
-            JLabel number = label(Integer.toString(slot), 19, true, rowText);
-            JLabel value = label(money(PrizeLadder.prizeFor(slot)), 19, true, rowText);
+            JLabel number = label(Integer.toString(slot), 16, true, rowText);
+            JLabel value = label(money(PrizeLadder.prizeFor(slot)), 16, true, rowText);
             row.add(number, BorderLayout.WEST);
             row.add(value, BorderLayout.EAST);
-            row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
             ladderRows.add(row);
-            ladderRows.add(Box.createVerticalStrut(1));
         }
         long guaranteed = engine.guaranteedBank();
         guaranteedLabel.setText(money(guaranteed));
