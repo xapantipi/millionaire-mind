@@ -50,25 +50,26 @@ import javax.sound.sampled.FloatControl;
 import javax.sound.sampled.LineEvent;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.UnsupportedAudioFileException;
-import javax.swing.Box;
-import javax.swing.BoxLayout;
 import javax.swing.AbstractAction;
 import javax.swing.ActionMap;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
 import javax.swing.ImageIcon;
+import javax.swing.InputMap;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.JToggleButton;
+import javax.swing.KeyStroke;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
-import javax.swing.InputMap;
-import javax.swing.KeyStroke;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
@@ -83,6 +84,10 @@ public final class SwingUI {
     private static final Color BORDER = new Color(60, 94, 139);
     private static final Color TEXT = new Color(245, 248, 255);
     private static final Color MUTED = new Color(185, 204, 231);
+    private static final Color DISABLED_TOP = new Color(67, 75, 88);
+    private static final Color DISABLED_BOTTOM = new Color(47, 54, 66);
+    private static final Color DISABLED_BORDER = new Color(137, 146, 160);
+    private static final Color DISABLED_TEXT = new Color(201, 207, 216);
     private static final Color BLUE = new Color(80, 126, 241);
     private static final Color PERIWINKLE = new Color(143, 174, 255);
     private static final Color GOLD = new Color(255, 205, 102);
@@ -204,8 +209,6 @@ public final class SwingUI {
         showMainMenu();
     }
 
-    // Fills the whole display so the window always matches the current screen's
-    // resolution instead of a fixed pixel size.
     private void applyFullScreenBounds() {
         frame.setUndecorated(true);
         frame.setResizable(false);
@@ -215,8 +218,6 @@ public final class SwingUI {
         frame.setExtendedState(JFrame.MAXIMIZED_BOTH);
     }
 
-    // Stops the music and releases the audio line immediately so playback doesn't
-    // linger after the window closes, then shuts the JVM down.
     private void exitApplication() {
         stopBackgroundMusic();
         stopResultsAudio();
@@ -236,7 +237,7 @@ public final class SwingUI {
     private void showSplashScreen() {
         URL url = getClass().getResource("/splash.gif");
         if (url == null) {
-            return; // asset missing — skip splash rather than crash
+            return;
         }
         stopBackgroundMusic();
         splashImage = new ImageIcon(url).getImage();
@@ -335,34 +336,34 @@ public final class SwingUI {
 
     private JPanel buildMainMenuScreen() {
         JPanel card = panel(new BorderLayout(), 38);
-        card.setPreferredSize(new Dimension(640, 520));
+        card.setPreferredSize(new Dimension(780, 640));
         JPanel content = new JPanel();
         content.setOpaque(false);
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
         content.add(Box.createVerticalStrut(6));
-        NodeEmblem emblem = new NodeEmblem();
+        NodeEmblem emblem = new NodeEmblem(92);
         emblem.setAlignmentX(Component.CENTER_ALIGNMENT);
         content.add(emblem);
         content.add(Box.createVerticalStrut(10));
-        JLabel eyebrow = label("THE AI KNOWLEDGE CHALLENGE", 13, true, PERIWINKLE);
+        JLabel eyebrow = label("THE AI KNOWLEDGE CHALLENGE", 15, true, PERIWINKLE);
         eyebrow.setAlignmentX(Component.CENTER_ALIGNMENT);
         eyebrow.setHorizontalAlignment(SwingConstants.CENTER);
         eyebrow.setPreferredSize(new Dimension(490, 22));
         eyebrow.setMaximumSize(new Dimension(490, 22));
         content.add(eyebrow);
         content.add(Box.createVerticalStrut(7));
-        JLabel title = label("Millionaire Mind", 38, true, TEXT);
+        JLabel title = label("Millionaire Mind", 48, true, TEXT);
         title.setAlignmentX(Component.CENTER_ALIGNMENT);
         content.add(title);
         content.add(Box.createVerticalStrut(8));
         JLabel subtitle = label("AI fundamentals  ·  " + PrizeLadder.totalSlots()
-        + " questions  ·  Normal or Timed", 17, false, MUTED);
+        + " questions  ·  Normal or Timed", 19, false, MUTED);
         subtitle.setAlignmentX(Component.CENTER_ALIGNMENT);
         subtitle.setHorizontalAlignment(SwingConstants.CENTER);
         subtitle.setPreferredSize(new Dimension(490, 30));
         subtitle.setMaximumSize(new Dimension(490, 30));
         content.add(subtitle);
-        content.add(Box.createVerticalStrut(31));
+        content.add(Box.createVerticalStrut(34));
 
         menuPlayButton = primaryButton("Play");
         menuPlayButton.setName("menuPlay");
@@ -386,25 +387,25 @@ public final class SwingUI {
     }
 
     private JPanel buildModeScreen() {
-        JPanel card = panel(new BorderLayout(), 34);
+        JPanel card = panel(new BorderLayout(), 38);
         card.setName("modeCard");
-        card.setPreferredSize(new Dimension(640, 480));
+        card.setPreferredSize(new Dimension(780, 640));
         JPanel content = new JPanel();
         content.setOpaque(false);
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
 
-        JLabel title = label("Choose your mode", 32, true, TEXT);
+        JLabel title = label("Choose your mode", 48, true, TEXT);
         title.setAlignmentX(Component.CENTER_ALIGNMENT);
         content.add(title);
         content.add(Box.createVerticalStrut(10));
-        JLabel subtitle = label("Normal Mode is untimed. Timed Mode gives you "
-                + GameEngine.TIMER_SECONDS + " seconds per question.", 15, false, MUTED);
+        JLabel subtitle = label("<html><div style='text-align: center;'>Normal Mode is untimed. Timed Mode gives you "
+                + GameEngine.TIMER_SECONDS + " seconds per question.</div></html>", 21, false, MUTED);
         subtitle.setHorizontalAlignment(SwingConstants.CENTER);
         subtitle.setAlignmentX(Component.CENTER_ALIGNMENT);
-        subtitle.setPreferredSize(new Dimension(500, 40));
-        subtitle.setMaximumSize(new Dimension(500, 40));
+        subtitle.setPreferredSize(new Dimension(650, 60));
+        subtitle.setMaximumSize(new Dimension(650, 60));
         content.add(subtitle);
-        content.add(Box.createVerticalStrut(26));
+        content.add(Box.createVerticalStrut(34));
 
         JButton normalMode = modeOptionButton("Normal Mode", "Unlimited time per question");
         normalMode.setName("modeNormal");
@@ -437,70 +438,70 @@ public final class SwingUI {
 
     private static JButton modeOptionButton(String title, String subtitle) {
         ModeOptionButton button = new ModeOptionButton(title, subtitle);
-        button.setPreferredSize(new Dimension(380, 66));
-        button.setMaximumSize(new Dimension(380, 66));
+        button.setPreferredSize(new Dimension(560, 100));
+        button.setMaximumSize(new Dimension(560, 100));
         return button;
     }
 
     private JPanel buildInstructionsScreen1() {
-        JPanel card = panel(new BorderLayout(0, 12), 22);
+        JPanel card = panel(new BorderLayout(0, 16), 28);
         card.setName("instructionsCard");
-        card.setPreferredSize(new Dimension(900, 610));
-        JLabel title = label("How to Play", 28, true, TEXT);
+        card.setPreferredSize(new Dimension(1000, 720));
+        JLabel title = label("How to Play", 36, true, TEXT);
         title.setHorizontalAlignment(SwingConstants.CENTER);
         card.add(title, BorderLayout.NORTH);
 
-        JPanel body = new JPanel(new BorderLayout(18, 0));
+        JPanel body = new JPanel(new BorderLayout(24, 0));
         body.setOpaque(false);
 
         JPanel textColumn = new JPanel();
         textColumn.setOpaque(false);
         textColumn.setLayout(new BoxLayout(textColumn, BoxLayout.Y_AXIS));
 
-        JLabel gameplayTitle = label("General Gameplay", 18, true, GOLD);
+        JLabel gameplayTitle = label("General Gameplay", 25, true, GOLD);
         gameplayTitle.setAlignmentX(0);
         textColumn.add(gameplayTitle);
-        textColumn.add(Box.createVerticalStrut(6));
+        textColumn.add(Box.createVerticalStrut(12));
         JTextArea gameplayText = instructionText("Answer 15 multiple-choice questions about "
                 + "AI fundamentals across six levels of Bloom's Taxonomy. Choose an answer, "
                 + "then select Lock in answer. Keep answering correctly to climb the prize "
-                + "ladder and reach the $1,000,000 question.", 14, 620, 92);
+                + "ladder and reach the $1,000,000 question.", 21, 680, 140);
         gameplayText.setName("instructionsText");
         textColumn.add(gameplayText);
-        textColumn.add(Box.createVerticalStrut(14));
+        textColumn.add(Box.createVerticalStrut(24));
 
-        JLabel prizeTitle = label("Prize Money", 18, true, GOLD);
+        JLabel prizeTitle = label("Prize Money", 25, true, GOLD);
         prizeTitle.setAlignmentX(0);
         textColumn.add(prizeTitle);
-        textColumn.add(Box.createVerticalStrut(6));
+        textColumn.add(Box.createVerticalStrut(12));
         JTextArea prizeIntro = instructionText("Every correct answer moves you one step "
-                + "closer to becoming a millionaire.", 14, 620, 24);
+                + "closer to becoming a millionaire.", 21, 680, 40);
         prizeIntro.setName("prizeIntroText");
         textColumn.add(prizeIntro);
-        textColumn.add(Box.createVerticalStrut(10));
+        textColumn.add(Box.createVerticalStrut(16));
 
-        JPanel checkpointBox = panel(new BorderLayout(), 12);
+        JPanel checkpointBox = panel(new BorderLayout(), 16);
         checkpointBox.setName("checkpointSummary");
         checkpointBox.setBackground(PANEL_DARK);
         checkpointBox.setAlignmentX(0);
-        checkpointBox.setMaximumSize(new Dimension(Integer.MAX_VALUE, 66));
-        JPanel checkpointLines = new JPanel(new GridLayout(2, 1, 0, 4));
+        checkpointBox.setMaximumSize(new Dimension(Integer.MAX_VALUE, 100));
+        JPanel checkpointLines = new JPanel(new GridLayout(2, 1, 0, 6));
         checkpointLines.setOpaque(false);
-        checkpointLines.add(label("Reach Question 5: $2,000 is guaranteed", 14, true, TEXT));
-        checkpointLines.add(label("Reach Question 10: $64,000 is guaranteed", 14, true, TEXT));
+        checkpointLines.add(label("Reach Question 5: $2,000 is guaranteed", 20, true, TEXT));
+        checkpointLines.add(label("Reach Question 10: $64,000 is guaranteed", 20, true, TEXT));
         checkpointBox.add(checkpointLines, BorderLayout.CENTER);
         textColumn.add(checkpointBox);
-        textColumn.add(Box.createVerticalStrut(10));
+        textColumn.add(Box.createVerticalStrut(16));
 
         JTextArea prizeTerms = instructionText("Get an answer wrong and you'll fall back "
                 + "to the latest checkpoint you've reached. You can also Walk Away "
-                + "whenever you want and keep your guaranteed winnings.", 14, 620, 56);
+                + "whenever you want and keep your guaranteed winnings.", 21, 680, 90);
         prizeTerms.setName("prizeTerms");
         textColumn.add(prizeTerms);
 
         body.add(textColumn, BorderLayout.CENTER);
         JPanel ladder = buildInstructionsLadder();
-        ladder.setPreferredSize(new Dimension(190, 420));
+        ladder.setPreferredSize(new Dimension(240, 500));
         body.add(ladder, BorderLayout.EAST);
         card.add(body, BorderLayout.CENTER);
 
@@ -516,10 +517,10 @@ public final class SwingUI {
     }
 
     private JPanel buildInstructionsScreen2() {
-        JPanel card = panel(new BorderLayout(0, 12), 22);
+        JPanel card = panel(new BorderLayout(0, 16), 28);
         card.setName("instructionsCard2");
-        card.setPreferredSize(new Dimension(900, 610));
-        JLabel title = label("How to Play", 28, true, TEXT);
+        card.setPreferredSize(new Dimension(1000, 720));
+        JLabel title = label("How to Play", 36, true, TEXT);
         title.setHorizontalAlignment(SwingConstants.CENTER);
         card.add(title, BorderLayout.NORTH);
 
@@ -527,55 +528,57 @@ public final class SwingUI {
         content.setOpaque(false);
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
 
-        JLabel lifelineTitle = label("Lifelines", 18, true, GOLD);
+        JLabel lifelineTitle = label("Lifelines", 25, true, GOLD);
         lifelineTitle.setAlignmentX(0);
         content.add(lifelineTitle);
-        content.add(Box.createVerticalStrut(8));
+        content.add(Box.createVerticalStrut(14));
 
-        JPanel lifelineBox = panel(new BorderLayout(0, 6), 14);
+        JPanel lifelineBox = panel(new BorderLayout(0, 8), 16);
         lifelineBox.setName("lifelinePreviewBox");
         lifelineBox.setBackground(PANEL_DARK);
         lifelineBox.setAlignmentX(0);
-        lifelineBox.setMaximumSize(new Dimension(Integer.MAX_VALUE, 132));
-        lifelineBox.add(label("Lifelines", 13, false, MUTED), BorderLayout.NORTH);
-        JPanel lifelineRow = new JPanel(new GridLayout(1, 4, 12, 0));
+        lifelineBox.setMaximumSize(new Dimension(Integer.MAX_VALUE, 160));
+        lifelineBox.add(label("Lifelines", 18, false, MUTED), BorderLayout.NORTH);
+        JPanel lifelineRow = new JPanel(new GridLayout(1, 4, 16, 0));
         lifelineRow.setOpaque(false);
         String[] names = {"50:50", "Spin the Wheel", "Switch the Question", "Phone a Friend"};
         for (int i = 0; i < names.length; i++) {
             StyledButton preview = new StyledButton(names[i], false, i);
             preview.setName("lifelinePreview" + i);
-            preview.setPreferredSize(new Dimension(140, 80));
+            preview.setFont(new Font("Segoe UI", Font.BOLD, 21));
+            preview.setPreferredSize(new Dimension(160, 95));
+            preview.setEnabledAppearanceWhenDisabled(true);
             preview.setEnabled(false);
             preview.setFocusable(false);
             lifelineRow.add(preview);
         }
         lifelineBox.add(lifelineRow, BorderLayout.CENTER);
         content.add(lifelineBox);
-        content.add(Box.createVerticalStrut(12));
+        content.add(Box.createVerticalStrut(22));
 
         JTextArea intro = instructionText("You're not completely on your own. You have "
-                + "four lifelines, and each one can only be used once.", 15, 800, 30);
+                + "four lifelines, and each one can only be used once.", 21, 900, 40);
         intro.setName("lifelineIntroText");
         content.add(intro);
-        content.add(Box.createVerticalStrut(6));
+        content.add(Box.createVerticalStrut(12));
 
         addInstructionBullet(content, "lifelineInstruction0",
-                "•  50:50 – Removes two wrong answers, leaving you with two choices.", 800, 26);
-        content.add(Box.createVerticalStrut(4));
+                "•  50:50 – Removes two wrong answers, leaving you with two choices.", 900, 36);
+        content.add(Box.createVerticalStrut(10));
         addInstructionBullet(content, "lifelineInstruction1",
                 "•  Spin the Wheel – Gives you a random advantage — it might remove a "
-                + "wrong answer, narrow your choices, or give you bonus time.", 800, 42);
-        content.add(Box.createVerticalStrut(4));
+                + "wrong answer, narrow your choices, or give you bonus time.", 900, 60);
+        content.add(Box.createVerticalStrut(10));
         addInstructionBullet(content, "lifelineInstruction2",
                 "•  Switch the Question – Don't like the question? Swap it for another "
-                + "one from the same Bloom's level.", 800, 42);
-        content.add(Box.createVerticalStrut(4));
-        addInstructionBullet(content, "lifelineInstruction3",
-                "•  Phone a Friend – Get a hint to help you figure out the answer.", 800, 26);
+                + "one from the same Bloom's level.", 900, 60);
         content.add(Box.createVerticalStrut(10));
+        addInstructionBullet(content, "lifelineInstruction3",
+                "•  Phone a Friend – Get a hint to help you figure out the answer.", 900, 36);
+        content.add(Box.createVerticalStrut(20));
 
         JTextArea outro = instructionText("Use them wisely. Once they're gone, they're gone.",
-                15, 800, 24);
+                21, 900, 40);
         outro.setName("lifelineOutroText");
         content.add(outro);
 
@@ -592,9 +595,8 @@ public final class SwingUI {
         return centeredPage(card);
     }
 
-    /** A compact, read-only rendering of the prize ladder for the instructions screen. */
     private JPanel buildInstructionsLadder() {
-        JPanel ladder = panel(new BorderLayout(), 10);
+        JPanel ladder = panel(new BorderLayout(), 12);
         ladder.setName("instructionsLadder");
         ladder.setBackground(PANEL_DARK);
         JPanel rows = new JPanel();
@@ -609,11 +611,11 @@ public final class SwingUI {
             row.setName("instructionsLadderQ" + slot);
             row.setBackground(rowColor);
             row.setBorder(new EmptyBorder(2, 10, 2, 10));
-            JLabel number = label(Integer.toString(slot), 13, true, rowText);
-            JLabel value = label(money(PrizeLadder.prizeFor(slot)), 13, true, rowText);
+            JLabel number = label(Integer.toString(slot), 18, true, rowText);
+            JLabel value = label(money(PrizeLadder.prizeFor(slot)), 18, true, rowText);
             row.add(number, BorderLayout.WEST);
             row.add(value, BorderLayout.EAST);
-            row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
+            row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
             rows.add(row);
             rows.add(Box.createVerticalStrut(1));
         }
@@ -621,7 +623,6 @@ public final class SwingUI {
         return ladder;
     }
 
-    /** Back/Next pager plus a home button that always returns to the main menu. */
     private JPanel buildInstructionsNavBar(JButton back, JButton next, String homeName) {
         back.setPreferredSize(new Dimension(150, 42));
         next.setPreferredSize(new Dimension(150, 42));
@@ -657,7 +658,7 @@ public final class SwingUI {
 
     private static void addInstructionBullet(JPanel content, String name,
             String text, int width, int height) {
-        JTextArea bullet = instructionText(text, 15, width, height);
+        JTextArea bullet = instructionText(text, 21, width, height);
         bullet.setName(name);
         content.add(bullet);
     }
@@ -665,16 +666,16 @@ public final class SwingUI {
     private JPanel buildNameScreen() {
         JPanel card = panel(new BorderLayout(), 34);
         card.setName("nameCard");
-        card.setPreferredSize(new Dimension(600, 430));
+        card.setPreferredSize(new Dimension(760, 540));
         JPanel content = new JPanel();
         content.setOpaque(false);
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
-        JLabel title = label("Ready to play?", 34, true, TEXT);
+        JLabel title = label("Ready to play?", 42, true, TEXT);
         title.setAlignmentX(Component.CENTER_ALIGNMENT);
         content.add(Box.createVerticalStrut(9));
         content.add(title);
         content.add(Box.createVerticalStrut(16));
-        JLabel description = label("Enter your name to begin the 15-question game.", 17, false, MUTED);
+        JLabel description = label("Enter your name to begin the 15-question game.", 19, false, MUTED);
         description.setAlignmentX(Component.CENTER_ALIGNMENT);
         description.setHorizontalAlignment(SwingConstants.CENTER);
         description.setPreferredSize(new Dimension(490, 30));
@@ -691,7 +692,7 @@ public final class SwingUI {
         content.add(namePrompt);
         content.add(Box.createVerticalStrut(8));
         nameField.setName("playerName");
-        nameField.setFont(BODY);
+        nameField.setFont(new Font("Segoe UI", Font.PLAIN, 21));
         nameField.setBackground(PANEL_DARK);
         nameField.setForeground(TEXT);
         nameField.setCaretColor(TEXT);
@@ -699,8 +700,8 @@ public final class SwingUI {
         nameField.setSelectedTextColor(TEXT);
         nameField.setBorder(new CompoundBorder(new LineBorder(BORDER, 1, true),
                 new EmptyBorder(10, 12, 10, 12)));
-        nameField.setPreferredSize(new Dimension(360, 48));
-        nameField.setMaximumSize(new Dimension(360, 48));
+        nameField.setPreferredSize(new Dimension(440, 58));
+        nameField.setMaximumSize(new Dimension(440, 58));
         nameField.setAlignmentX(Component.CENTER_ALIGNMENT);
         content.add(nameField);
         content.add(Box.createVerticalStrut(6));
@@ -739,8 +740,9 @@ public final class SwingUI {
 
     private static void addMenuButton(JPanel content, JButton button) {
         if (button.getPreferredSize().width < 300) {
-            button.setPreferredSize(new Dimension(260, 50));
-            button.setMaximumSize(new Dimension(260, 50));
+            button.setPreferredSize(new Dimension(320, 60));
+            button.setMaximumSize(new Dimension(320, 60));
+            button.setFont(new Font("Segoe UI", Font.BOLD, 20));
         }
         button.setAlignmentX(Component.CENTER_ALIGNMENT);
         content.add(button);
@@ -778,7 +780,7 @@ public final class SwingUI {
         content.setBorder(new EmptyBorder(8, 12, 8, 12));
         content.add(buildQuestionPanel(), BorderLayout.CENTER);
         JPanel ladder = buildLadderPanel();
-        ladder.setPreferredSize(new Dimension(310, 650));
+        ladder.setPreferredSize(new Dimension(350, 650));
         content.add(ladder, BorderLayout.EAST);
         page.add(content, BorderLayout.CENTER);
         return page;
@@ -800,10 +802,6 @@ public final class SwingUI {
         left.setOpaque(false);
         left.add(levelLabel);
         left.add(positionLabel);
-        // ---------------------------------------
-        // timerLabel.setName("questionTimer");
-        // left.add(timerLabel);
-        // ---------------------------------------
         top.add(left, BorderLayout.WEST);
         JPanel prize = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         prize.setOpaque(false);
@@ -827,11 +825,11 @@ public final class SwingUI {
         promptAccent.setPreferredSize(new Dimension(4, 10));
         promptBox.add(promptAccent, BorderLayout.WEST);
         promptText.setName("questionText");
-        promptText.setFont(new Font("Segoe UI", Font.BOLD, 25));
+        promptText.setFont(new Font("Segoe UI", Font.BOLD, 30));
         promptText.setEditable(false);
         promptText.setFocusable(false);
         promptText.setBackground(PANEL_DARK);
-        promptText.setPreferredSize(new Dimension(400, 90));
+        promptText.setPreferredSize(new Dimension(400, 112));
         promptText.addComponentListener(new ComponentAdapter() {
             @Override
             public void componentResized(ComponentEvent event) {
@@ -870,8 +868,8 @@ public final class SwingUI {
             answerButtons[i] = answer;
             answerRows[i / 2].add(answer);
         }
-        answerGrid.setPreferredSize(new Dimension(650, 174));
-        answerGrid.setMaximumSize(new Dimension(Integer.MAX_VALUE, 174));
+        answerGrid.setPreferredSize(new Dimension(650, 206));
+        answerGrid.setMaximumSize(new Dimension(Integer.MAX_VALUE, 206));
         answerGrid.setAlignmentX(0);
         body.add(answerGrid);
         body.add(Box.createVerticalStrut(5));
@@ -881,7 +879,8 @@ public final class SwingUI {
         lockButton.setName("lockAnswer");
         lockButton.setMnemonic(KeyEvent.VK_L);
         lockButton.setEnabled(false);
-        lockButton.setPreferredSize(new Dimension(270, 42));
+        lockButton.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        lockButton.setPreferredSize(new Dimension(320, 54));
         lockButton.addActionListener(event -> lockAnswer());
         lockRow.add(lockButton);
         lockRow.setAlignmentX(0);
@@ -900,13 +899,16 @@ public final class SwingUI {
         body.add(Box.createVerticalStrut(3));
         JPanel lifelines = new JPanel(new GridLayout(1, 4, 10, 0));
         lifelines.setOpaque(false);
+        lifelines.setMaximumSize(new Dimension(Integer.MAX_VALUE, 125));
         String[] names = {"50:50", "Spin the Wheel", "Switch the Question", "Phone a Friend"};
         for (int i = 0; i < names.length; i++) {
             final int index = i;
             StyledButton button = new StyledButton(names[i], false, i);
             button.setName("lifeline" + i);
             button.setMnemonic(KeyEvent.VK_1 + i);
-            button.setPreferredSize(new Dimension(120, 60));
+            button.setFont(new Font("Segoe UI", Font.BOLD, 22));
+            button.setPreferredSize(new Dimension(150, 115));
+            button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 115));
             button.addActionListener(event -> useLifeline(index));
             lifelineButtons[i] = button;
             lifelines.add(button);
@@ -918,8 +920,9 @@ public final class SwingUI {
         noticeText.setEditable(false);
         noticeText.setFocusable(false);
         noticeText.setForeground(MUTED);
-        noticeText.setPreferredSize(new Dimension(500, 28));
-        noticeText.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
+        noticeText.setFont(new Font("Segoe UI", Font.PLAIN, 17));
+        noticeText.setPreferredSize(new Dimension(500, 36));
+        noticeText.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
         noticeText.setAlignmentX(0);
         body.add(noticeText);
         main.add(body, BorderLayout.CENTER);
@@ -1004,15 +1007,27 @@ public final class SwingUI {
         JPanel footer = new JPanel();
         footer.setOpaque(false);
         footer.setLayout(new BoxLayout(footer, BoxLayout.Y_AXIS));
-        footer.add(label("Guaranteed", 15, false, MUTED));
+        
+        JLabel guaranteedTitle = label("Guaranteed", 15, false, MUTED);
+        guaranteedTitle.setAlignmentX(Component.CENTER_ALIGNMENT);
+        footer.add(guaranteedTitle);
+        
         guaranteedLabel.setName("guaranteedAmount");
+        guaranteedLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         footer.add(guaranteedLabel);
+        
         checkpointLabel.setName("checkpointStatus");
+        checkpointLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         footer.add(checkpointLabel);
+        
         footer.add(Box.createVerticalStrut(11));
+        
         walkButton.setName("walkAway");
         walkButton.setMnemonic(KeyEvent.VK_W);
-        walkButton.setMaximumSize(new Dimension(Integer.MAX_VALUE, 45));
+        walkButton.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        walkButton.setPreferredSize(new Dimension(260, 58));
+        walkButton.setMaximumSize(new Dimension(Integer.MAX_VALUE, 58));
+        walkButton.setAlignmentX(Component.CENTER_ALIGNMENT);
         walkButton.addActionListener(event -> {
             playProgressSound();
             stopQuestionTimer();
@@ -1214,7 +1229,7 @@ public final class SwingUI {
         if (width <= 0) return;
         View textView = promptText.getUI().getRootView(promptText);
         textView.setSize(Math.max(80, width), Short.MAX_VALUE);
-        int height = Math.max(90, (int) Math.ceil(textView.getPreferredSpan(View.Y_AXIS)) + 8);
+        int height = Math.max(112, (int) Math.ceil(textView.getPreferredSpan(View.Y_AXIS)) + 12);
         Dimension preferred = promptText.getPreferredSize();
         if (preferred.width != width || preferred.height != height) {
             promptText.setPreferredSize(new Dimension(width, height));
@@ -1227,8 +1242,8 @@ public final class SwingUI {
     private void fitQuestionContent() {
         if (engine == null || questionBody.getHeight() <= 0) return;
         for (int step = 0; step <= 12; step++) {
-            int promptSize = Math.max(18, 25 - step);
-            int answerSize = Math.max(13, 17 - step / 2);
+            int promptSize = Math.max(20, 30 - step);
+            int answerSize = Math.max(15, 20 - step / 2);
             if (promptText.getFont().getSize() != promptSize) {
                 promptText.setFont(new Font("Segoe UI", Font.BOLD, promptSize));
             }
@@ -1238,13 +1253,31 @@ public final class SwingUI {
             frame.validate();
             if (questionBody.getPreferredSize().height <= questionBody.getHeight()) break;
         }
+
+        int spare = questionBody.getHeight() - questionBody.getPreferredSize().height;
+        if (spare > 24 && answerRows[0] != null && answerRows[1] != null) {
+            int addedPerRow = Math.min(64, spare / 2);
+            int[] heights = new int[2];
+            for (int row = 0; row < answerRows.length; row++) {
+                heights[row] = answerRows[row].getPreferredSize().height + addedPerRow;
+                answerRows[row].setPreferredSize(new Dimension(650, heights[row]));
+                answerRows[row].setMaximumSize(new Dimension(Integer.MAX_VALUE, heights[row]));
+                for (int option = row * 2; option < row * 2 + 2; option++) {
+                    answerButtons[option].setPreferredSize(new Dimension(250, heights[row]));
+                }
+            }
+            int gridHeight = heights[0] + heights[1] + 14;
+            answerGrid.setPreferredSize(new Dimension(650, gridHeight));
+            answerGrid.setMaximumSize(new Dimension(Integer.MAX_VALUE, gridHeight));
+            answerGrid.revalidate();
+        }
     }
 
     private void adjustAnswerGridHeight() {
         int width = answerGrid.getWidth();
         if (width <= 0) width = answerGrid.getPreferredSize().width;
         int buttonWidth = Math.max(150, (width - 14) / 2);
-        int[] heights = {80, 80};
+        int[] heights = {96, 96};
         for (int i = 0; i < answerButtons.length; i++) {
             if (answerButtons[i] != null) {
                 heights[i / 2] = Math.max(heights[i / 2],
@@ -1386,11 +1419,11 @@ public final class SwingUI {
             row.setName("ladderQ" + slot);
             row.setBackground(rowColor);
             row.setBorder(new EmptyBorder(2, 11, 2, 11));
-            JLabel number = label(Integer.toString(slot), 16, true, rowText);
-            JLabel value = label(money(PrizeLadder.prizeFor(slot)), 16, true, rowText);
+            JLabel number = label(Integer.toString(slot), 19, true, rowText);
+            JLabel value = label(money(PrizeLadder.prizeFor(slot)), 19, true, rowText);
             row.add(number, BorderLayout.WEST);
             row.add(value, BorderLayout.EAST);
-            row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 27));
+            row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
             ladderRows.add(row);
             ladderRows.add(Box.createVerticalStrut(1));
         }
@@ -1429,36 +1462,41 @@ public final class SwingUI {
     }
 
     private JPanel buildResultsScreen(Path logPath, String logError) {
-        JPanel card = panel(new BorderLayout(0, 10), 20);
+        JPanel card = panel(new BorderLayout(0, 10), 24);
         card.setName("resultsCard");
-        card.setPreferredSize(new Dimension(760, 620));
+        card.setPreferredSize(new Dimension(920, 780));
+        
         JPanel details = new JPanel();
         details.setOpaque(false);
         details.setLayout(new BoxLayout(details, BoxLayout.Y_AXIS));
-        JLabel title = label("Game report", 31, true, TEXT);
+
+        JLabel title = label("Game report", 40, true, TEXT);
         title.setAlignmentX(Component.CENTER_ALIGNMENT);
         details.add(title);
-        details.add(Box.createVerticalStrut(9));
+        details.add(Box.createVerticalStrut(6));
+
         PlayerSession session = engine.session();
-        JLabel player = label("Player: " + session.playerName(), 17, false, MUTED);
+        JLabel player = label("Player: " + session.playerName(), 20, false, MUTED);
         player.setAlignmentX(Component.CENTER_ALIGNMENT);
         details.add(player);
-        details.add(Box.createVerticalStrut(11));
+        details.add(Box.createVerticalStrut(8));
+
         String outcome = session.becameMillionaire() ? "Millionaire!"
                 : session.walkedAway() ? "Walked away" : "Game over";
         JLabel result = label(outcome + "  ·  " + money(session.bankedWinnings()),
-                27, true, GOLD);
+                34, true, GOLD);
         result.setName("resultOutcome");
         result.setAlignmentX(Component.CENTER_ALIGNMENT);
         details.add(result);
-        details.add(Box.createVerticalStrut(20));
+        details.add(Box.createVerticalStrut(14));
 
-        JPanel reportPanel = panel(new BorderLayout(0, 8), 13);
+        JPanel reportPanel = panel(new BorderLayout(0, 8), 18);
         reportPanel.setName("bloomReportPanel");
         reportPanel.setBackground(PANEL_DARK);
         reportPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        reportPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 236));
-        reportPanel.add(label("Bloom report", 20, true, TEXT), BorderLayout.NORTH);
+        reportPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 280));
+        reportPanel.add(label("Bloom report", 22, true, TEXT), BorderLayout.NORTH);
+
         JPanel reportRows = new JPanel(new GridLayout(BloomLevel.values().length, 1, 0, 4));
         reportRows.setOpaque(false);
         Map<BloomLevel, int[]> report = session.bloomReport();
@@ -1466,37 +1504,41 @@ public final class SwingUI {
             int[] count = report.get(level);
             JPanel row = new JPanel(new BorderLayout());
             row.setOpaque(false);
-            row.add(label(level.displayName(), 16, false, MUTED), BorderLayout.WEST);
+            row.add(label(level.displayName(), 19, false, MUTED), BorderLayout.WEST);
             row.add(label(count[0] + " / " + (count[0] + count[1]) + " correct",
-                    16, true, TEXT), BorderLayout.EAST);
+                    19, true, TEXT), BorderLayout.EAST);
             reportRows.add(row);
         }
         reportPanel.add(reportRows, BorderLayout.CENTER);
         details.add(reportPanel);
-        details.add(Box.createVerticalStrut(14));
+        details.add(Box.createVerticalStrut(10));
+
         JLabel summary = null;
         if (session.becameMillionaire()) {
             summary = label("All Bloom levels tied at 100%; no unique strongest or weakest.",
-                    15, false, MUTED);
+                    17, false, MUTED);
         } else if (!session.history().isEmpty()
                 && session.strongestLevel() != session.weakestLevel()) {
             summary = label("Strongest: " + session.strongestLevel().displayName()
-                    + "  ·  Weakest: " + session.weakestLevel().displayName(), 15, false, MUTED);
+                    + "  ·  Weakest: " + session.weakestLevel().displayName(), 17, false, MUTED);
         }
         if (summary != null) {
             summary.setAlignmentX(Component.CENTER_ALIGNMENT);
             details.add(summary);
+            details.add(Box.createVerticalStrut(10));
         }
-        details.add(Box.createVerticalStrut(15));
+
         JLabel logStatus = label(logPath != null ? "Session replay saved"
-                : "Replay log could not be saved: " + logError, 15, false, MUTED);
+                : "Replay log could not be saved: " + logError, 17, false, MUTED);
         logStatus.setName("logStatus");
         logStatus.setAlignmentX(Component.CENTER_ALIGNMENT);
         details.add(logStatus);
+
         if (logPath != null) {
-            details.add(Box.createVerticalStrut(7));
+            details.add(Box.createVerticalStrut(6));
             JButton openLog = outlineButton("Open " + logPath.getFileName());
             openLog.setName("openSessionLog");
+            openLog.setFont(new Font("Segoe UI", Font.BOLD, 18));
             openLog.setToolTipText(logPath.toAbsolutePath().toString());
             openLog.getAccessibleContext().setAccessibleDescription(
                     "Open session replay file " + logPath.getFileName());
@@ -1507,9 +1549,18 @@ public final class SwingUI {
             });
             details.add(openLog);
         }
-        card.add(details, BorderLayout.CENTER);
+
+        JScrollPane scrollPane = new JScrollPane(details);
+        scrollPane.setOpaque(false);
+        scrollPane.getViewport().setOpaque(false);
+        scrollPane.setBorder(null);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+
+        card.add(scrollPane, BorderLayout.CENTER);
+
         JButton again = primaryButton("Play again");
         again.setName("playAgain");
+        again.setFont(new Font("Segoe UI", Font.BOLD, 20));
         again.addActionListener(event -> {
             nameField.setText("");
             playProgressSound();
@@ -1517,14 +1568,17 @@ public final class SwingUI {
         });
         JButton menu = outlineButton("Main menu");
         menu.setName("resultsMenu");
+        menu.setFont(new Font("Segoe UI", Font.BOLD, 20));
         menu.addActionListener(event -> { playBackSound(); showMainMenu(); });
+
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 0));
         actions.setOpaque(false);
-        again.setPreferredSize(new Dimension(170, 48));
-        menu.setPreferredSize(new Dimension(170, 48));
+        again.setPreferredSize(new Dimension(220, 54));
+        menu.setPreferredSize(new Dimension(220, 54));
         actions.add(again);
         actions.add(menu);
         card.add(actions, BorderLayout.SOUTH);
+
         return centeredPage(card);
     }
 
@@ -1687,10 +1741,13 @@ public final class SwingUI {
     }
 
     private static final class NodeEmblem extends JPanel {
-        NodeEmblem() {
+        private final int size;
+
+        NodeEmblem(int size) {
+            this.size = size;
             setOpaque(false);
-            setPreferredSize(new Dimension(76, 76));
-            setMaximumSize(new Dimension(76, 76));
+            setPreferredSize(new Dimension(size, size));
+            setMaximumSize(new Dimension(size, size));
         }
 
         @Override
@@ -1698,6 +1755,7 @@ public final class SwingUI {
             Graphics2D g = (Graphics2D) graphics.create();
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                     RenderingHints.VALUE_ANTIALIAS_ON);
+            g.scale(size / 76.0, size / 76.0);
             g.setColor(new Color(73, 113, 204, 49));
             g.fillOval(3, 3, 70, 70);
             g.setColor(new Color(139, 176, 255, 145));
@@ -1783,7 +1841,7 @@ public final class SwingUI {
 
         ProgressStrip() {
             setOpaque(false);
-            setPreferredSize(new Dimension(200, 8));
+            setPreferredSize(new Dimension(200, 24));
         }
 
         void setSlot(int slot) {
@@ -1797,14 +1855,14 @@ public final class SwingUI {
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                     RenderingHints.VALUE_ANTIALIAS_ON);
             int count = PrizeLadder.totalSlots();
-            int gap = 4;
+            int gap = 6;
             int segment = Math.max(3, (getWidth() - (count - 1) * gap) / count);
             for (int i = 1; i <= count; i++) {
                 g.setColor(i == slot ? PERIWINKLE : PrizeLadder.isCheckpoint(i)
                         ? GOLD : i < slot ? new Color(72, 114, 189)
                         : new Color(58, 83, 121));
                 g.fillRoundRect((i - 1) * (segment + gap), 0,
-                        segment, getHeight() - 1, 6, 6);
+                        segment, getHeight() - 1, 9, 9);
             }
             g.dispose();
         }
@@ -1814,6 +1872,7 @@ public final class SwingUI {
         private final boolean primary;
         private final int lifeline;
         private boolean available = true;
+        private boolean enabledAppearanceWhenDisabled;
 
         StyledButton(String text, boolean primary, int lifeline) {
             super(text);
@@ -1839,6 +1898,11 @@ public final class SwingUI {
             repaint();
         }
 
+        void setEnabledAppearanceWhenDisabled(boolean enabledAppearanceWhenDisabled) {
+            this.enabledAppearanceWhenDisabled = enabledAppearanceWhenDisabled;
+            repaint();
+        }
+
         @Override
         protected void paintComponent(Graphics graphics) {
             Graphics2D g = (Graphics2D) graphics.create();
@@ -1846,31 +1910,34 @@ public final class SwingUI {
                     RenderingHints.VALUE_ANTIALIAS_ON);
             g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
                     RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-            boolean actionable = isEnabled() && available;
-            boolean hover = getModel().isRollover();
-            boolean pressed = getModel().isPressed();
-            Color top = !actionable ? new Color(34, 55, 84)
+            boolean actionable = isEnabled() && available || enabledAppearanceWhenDisabled;
+            boolean hover = actionable && getModel().isRollover();
+            boolean pressed = actionable && getModel().isPressed();
+            Color top = !actionable ? DISABLED_TOP
                     : primary ? hover ? new Color(110, 154, 255)
                     : new Color(89, 137, 251)
                     : hover ? new Color(36, 67, 109)
                     : new Color(24, 49, 82);
-            Color bottom = !actionable ? new Color(25, 44, 71)
+            Color bottom = !actionable ? DISABLED_BOTTOM
                     : primary ? pressed ? new Color(54, 94, 197)
                     : new Color(58, 105, 225)
                     : new Color(18, 40, 70);
             g.setPaint(new GradientPaint(0, 0, top, 0, getHeight(), bottom));
             g.fillRoundRect(1, 1, getWidth() - 2, getHeight() - 2, 12, 12);
-            g.setColor(isFocusOwner() ? GOLD : !actionable
-                    ? new Color(65, 88, 122) : primary ? PERIWINKLE
+            g.setColor(!actionable ? DISABLED_BORDER : isFocusOwner() ? GOLD
+                    : primary ? PERIWINKLE
                     : hover ? PERIWINKLE : BORDER);
-            g.setStroke(new BasicStroke(isFocusOwner() ? 2f : 1.2f));
+            g.setStroke(!actionable
+                    ? new BasicStroke(2f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND,
+                            10f, new float[] {5f, 4f}, 0f)
+                    : new BasicStroke(isFocusOwner() ? 2f : 1.2f));
             g.drawRoundRect(1, 1, getWidth() - 3, getHeight() - 3, 12, 12);
             if (primary && actionable) {
                 g.setColor(new Color(240, 246, 255, 48));
                 g.drawLine(13, 3, Math.max(13, getWidth() - 14), 3);
             }
             g.setFont(getFont());
-            g.setColor(actionable ? TEXT : MUTED);
+            g.setColor(actionable ? TEXT : DISABLED_TEXT);
             FontMetrics metrics = g.getFontMetrics();
             if (lifeline >= 0) {
                 paintLifeline(g, metrics);
@@ -1883,33 +1950,44 @@ public final class SwingUI {
         }
 
         private void paintLifeline(Graphics2D g, FontMetrics metrics) {
-            int iconX = (getWidth() - 28) / 2;
-            int iconY = 9;
-            boolean actionable = isEnabled() && available;
-            g.setColor(actionable ? PERIWINKLE : MUTED);
-            g.setStroke(new BasicStroke(2.2f, BasicStroke.CAP_ROUND,
-                    BasicStroke.JOIN_ROUND));
+            int iconSize = 48;
+            boolean actionable = isEnabled() && available || enabledAppearanceWhenDisabled;
+            
+            List<String> lines = AnswerButton.wrap(getText(), metrics, Math.max(60, getWidth() - 16));
+            int gap = 8;
+            int totalTextHeight = lines.size() * metrics.getHeight();
+            int totalContentHeight = iconSize + gap + totalTextHeight;
+            int startY = (getHeight() - totalContentHeight) / 2;
+            
+            Graphics2D icon = (Graphics2D) g.create();
+            icon.translate((getWidth() - iconSize) / 2, startY);
+            icon.scale(iconSize / 28.0, iconSize / 28.0);
+            icon.setColor(actionable ? PERIWINKLE : DISABLED_TEXT);
+            icon.setStroke(new BasicStroke(2.2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            
+            int iconX = 0;
+            int iconY = 0;
             switch (lifeline) {
                 case 0 -> {
-                    g.drawLine(iconX + 5, iconY + 4, iconX + 23, iconY + 22);
-                    g.drawLine(iconX + 23, iconY + 4, iconX + 5, iconY + 22);
-                    g.drawOval(iconX + 1, iconY + 20, 8, 8);
-                    g.drawOval(iconX + 19, iconY + 20, 8, 8);
+                    icon.drawLine(iconX + 5, iconY + 4, iconX + 23, iconY + 22);
+                    icon.drawLine(iconX + 23, iconY + 4, iconX + 5, iconY + 22);
+                    icon.drawOval(iconX + 1, iconY + 20, 8, 8);
+                    icon.drawOval(iconX + 19, iconY + 20, 8, 8);
                 }
                 case 1 -> {
-                    g.drawOval(iconX + 2, iconY + 2, 24, 24);
-                    g.drawLine(iconX + 14, iconY + 3, iconX + 14, iconY + 25);
-                    g.drawLine(iconX + 3, iconY + 14, iconX + 25, iconY + 14);
-                    g.drawLine(iconX + 6, iconY + 6, iconX + 22, iconY + 22);
-                    g.drawLine(iconX + 22, iconY + 6, iconX + 6, iconY + 22);
+                    icon.drawOval(iconX + 2, iconY + 2, 24, 24);
+                    icon.drawLine(iconX + 14, iconY + 3, iconX + 14, iconY + 25);
+                    icon.drawLine(iconX + 3, iconY + 14, iconX + 25, iconY + 14);
+                    icon.drawLine(iconX + 6, iconY + 6, iconX + 22, iconY + 22);
+                    icon.drawLine(iconX + 22, iconY + 6, iconX + 6, iconY + 22);
                 }
                 case 2 -> {
-                    g.drawArc(iconX + 3, iconY + 3, 22, 22, 30, 150);
-                    g.drawArc(iconX + 3, iconY + 3, 22, 22, 210, 150);
-                    g.drawLine(iconX + 4, iconY + 9, iconX + 3, iconY + 3);
-                    g.drawLine(iconX + 4, iconY + 9, iconX + 10, iconY + 7);
-                    g.drawLine(iconX + 24, iconY + 19, iconX + 25, iconY + 25);
-                    g.drawLine(iconX + 24, iconY + 19, iconX + 18, iconY + 21);
+                    icon.drawArc(iconX + 3, iconY + 3, 22, 22, 30, 150);
+                    icon.drawArc(iconX + 3, iconY + 3, 22, 22, 210, 150);
+                    icon.drawLine(iconX + 4, iconY + 9, iconX + 3, iconY + 3);
+                    icon.drawLine(iconX + 4, iconY + 9, iconX + 10, iconY + 7);
+                    icon.drawLine(iconX + 24, iconY + 19, iconX + 25, iconY + 25);
+                    icon.drawLine(iconX + 24, iconY + 19, iconX + 18, iconY + 21);
                 }
                 case 3 -> {
                     Path2D handset = new Path2D.Double();
@@ -1924,14 +2002,14 @@ public final class SwingUI {
                             iconX + 10, iconY + 15, iconX + 8, iconY + 11);
                     handset.lineTo(iconX + 11, iconY + 8);
                     handset.closePath();
-                    g.draw(handset);
+                    icon.draw(handset);
                 }
                 default -> throw new IllegalStateException("Unknown lifeline icon");
             }
-            g.setColor(actionable ? TEXT : MUTED);
-            List<String> lines = AnswerButton.wrap(getText(), metrics,
-                    Math.max(60, getWidth() - 16));
-            int baseline = getHeight() / 2 + 20 - (lines.size() - 1) * 10;
+            icon.dispose();
+            
+            g.setColor(actionable ? TEXT : DISABLED_TEXT);
+            int baseline = startY + iconSize + gap + metrics.getAscent();
             for (String line : lines) {
                 g.drawString(line, (getWidth() - metrics.stringWidth(line)) / 2, baseline);
                 baseline += metrics.getHeight();
@@ -1945,7 +2023,7 @@ public final class SwingUI {
         ModeOptionButton(String title, String subtitle) {
             super(title);
             this.subtitle = subtitle;
-            setFont(new Font("Segoe UI", Font.BOLD, 19));
+            setFont(new Font("Segoe UI", Font.BOLD, 26));
             setForeground(TEXT);
             setOpaque(false);
             setContentAreaFilled(false);
@@ -1960,32 +2038,38 @@ public final class SwingUI {
             Graphics2D g = (Graphics2D) graphics.create();
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-            boolean hover = getModel().isRollover();
-            Color top = hover ? new Color(36, 67, 109) : new Color(24, 49, 82);
-            Color bottom = hover ? new Color(24, 51, 88) : new Color(18, 40, 70);
+            boolean enabled = isEnabled();
+            boolean hover = enabled && getModel().isRollover();
+            Color top = !enabled ? DISABLED_TOP
+                    : hover ? new Color(36, 67, 109) : new Color(24, 49, 82);
+            Color bottom = !enabled ? DISABLED_BOTTOM
+                    : hover ? new Color(24, 51, 88) : new Color(18, 40, 70);
             g.setPaint(new GradientPaint(0, 0, top, 0, getHeight(), bottom));
             g.fillRoundRect(1, 1, getWidth() - 2, getHeight() - 2, 16, 16);
-            g.setColor(isFocusOwner() ? GOLD : hover ? PERIWINKLE : BORDER);
-            g.setStroke(new BasicStroke(isFocusOwner() ? 2f : 1.2f));
+            g.setColor(!enabled ? DISABLED_BORDER : isFocusOwner() ? GOLD
+                    : hover ? PERIWINKLE : BORDER);
+            g.setStroke(!enabled
+                    ? new BasicStroke(2f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND,
+                            10f, new float[] {5f, 4f}, 0f)
+                    : new BasicStroke(isFocusOwner() ? 2f : 1.2f));
             g.drawRoundRect(1, 1, getWidth() - 3, getHeight() - 3, 16, 16);
 
             FontMetrics titleMetrics = g.getFontMetrics(getFont());
-            int titleY = getHeight() / 2 - 6;
+            int titleY = getHeight() / 2 - 8;
             g.setFont(getFont());
-            g.setColor(TEXT);
+            g.setColor(enabled ? TEXT : DISABLED_TEXT);
             g.drawString(getText(), (getWidth() - titleMetrics.stringWidth(getText())) / 2, titleY);
 
-            Font subFont = new Font("Segoe UI", Font.PLAIN, 13);
+            Font subFont = new Font("Segoe UI", Font.PLAIN, 19);
             FontMetrics subMetrics = g.getFontMetrics(subFont);
             g.setFont(subFont);
-            g.setColor(MUTED);
-            int subtitleY = titleY + subMetrics.getHeight() + 2;
+            g.setColor(enabled ? MUTED : DISABLED_TEXT);
+            int subtitleY = titleY + subMetrics.getHeight() + 4;
             g.drawString(subtitle, (getWidth() - subMetrics.stringWidth(subtitle)) / 2, subtitleY);
             g.dispose();
         }
     }
 
-    /** The white, round home button that returns to the main menu from the instructions. */
     private static final class HomeButton extends JButton {
         HomeButton() {
             setOpaque(false);
@@ -2003,14 +2087,19 @@ public final class SwingUI {
             Graphics2D g = (Graphics2D) graphics.create();
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             boolean hover = getModel().isRollover();
-            Color fill = hover ? Color.WHITE : new Color(240, 244, 252);
+            Color fill = !isEnabled() ? DISABLED_TOP
+                    : hover ? Color.WHITE : new Color(240, 244, 252);
             int d = Math.min(getWidth(), getHeight()) - 2;
             int x = (getWidth() - d) / 2;
             int y = (getHeight() - d) / 2;
             g.setColor(fill);
             g.fillOval(x, y, d, d);
-            g.setColor(isFocusOwner() ? GOLD : BORDER);
-            g.setStroke(new BasicStroke(isFocusOwner() ? 2f : 1.2f));
+            g.setColor(isEnabled() && isFocusOwner() ? GOLD
+                    : isEnabled() ? BORDER : DISABLED_BORDER);
+            g.setStroke(!isEnabled()
+                    ? new BasicStroke(2f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND,
+                            10f, new float[] {4f, 3f}, 0f)
+                    : new BasicStroke(isFocusOwner() ? 2f : 1.2f));
             g.drawOval(x, y, d - 1, d - 1);
 
             int cx = x + d / 2;
@@ -2028,7 +2117,7 @@ public final class SwingUI {
             house.lineTo(cx - half, baseBottom);
             house.lineTo(cx - half, baseTop);
             house.closePath();
-            g.setColor(BACKGROUND);
+            g.setColor(isEnabled() ? BACKGROUND : DISABLED_TEXT);
             g.fill(house);
             int doorWidth = Math.max(3, (int) Math.round(d * 0.09));
             int doorHeight = (int) Math.round(d * 0.14);
@@ -2156,7 +2245,7 @@ public final class SwingUI {
     private static final class AnswerButton extends JToggleButton {
         private final int index;
         private String optionText = "";
-        private Font optionFont = BOLD;
+        private Font optionFont = new Font("Segoe UI", Font.BOLD, 20);
 
         AnswerButton(int index) {
             this.index = index;
@@ -2165,7 +2254,7 @@ public final class SwingUI {
             setFocusPainted(false);
             setRolloverEnabled(true);
             setOpaque(false);
-            setPreferredSize(new Dimension(250, 80));
+            setPreferredSize(new Dimension(250, 96));
             setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
         }
 
@@ -2191,7 +2280,7 @@ public final class SwingUI {
         int requiredHeight(int width) {
             FontMetrics metrics = getFontMetrics(optionFont);
             int lines = wrap(optionText, metrics, Math.max(60, width - 92)).size();
-            return Math.max(80, lines * (metrics.getHeight() + 2) + 20);
+            return Math.max(96, lines * (metrics.getHeight() + 2) + 24);
         }
 
         @Override
@@ -2201,15 +2290,22 @@ public final class SwingUI {
             g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
                     RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
             boolean hover = getModel().isRollover() && isEnabled();
-            Color top = isSelected() ? new Color(107, 151, 255)
+            boolean enabled = isEnabled();
+            Color top = !enabled ? DISABLED_TOP
+                    : isSelected() ? new Color(107, 151, 255)
                     : hover ? new Color(35, 66, 109) : new Color(23, 49, 82);
-            Color bottom = isSelected() ? BLUE
+            Color bottom = !enabled ? DISABLED_BOTTOM
+                    : isSelected() ? BLUE
                     : hover ? new Color(24, 51, 88) : PANEL_DARK;
             g.setPaint(new GradientPaint(0, 0, top, 0, getHeight(), bottom));
             g.fillRoundRect(1, 1, getWidth() - 2, getHeight() - 2, 14, 14);
-            g.setColor(isFocusOwner() ? GOLD : isSelected() ? PERIWINKLE
+            g.setColor(!enabled ? DISABLED_BORDER
+                    : isFocusOwner() ? GOLD : isSelected() ? PERIWINKLE
                     : hover ? new Color(109, 151, 215) : BORDER);
-            g.setStroke(new BasicStroke(isFocusOwner() ? 2 : 1));
+            g.setStroke(!enabled
+                    ? new BasicStroke(2f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND,
+                            10f, new float[] {5f, 4f}, 0f)
+                    : new BasicStroke(isFocusOwner() ? 2 : 1));
             g.drawRoundRect(1, 1, getWidth() - 3, getHeight() - 3, 14, 14);
             if (!isEnabled()) {
                 g.dispose();
@@ -2222,7 +2318,7 @@ public final class SwingUI {
             g.setColor(isSelected() ? new Color(45, 89, 184)
                     : new Color(56, 81, 119));
             g.fillRoundRect(16, getHeight() / 2 - 22, 44, 44, 8, 8);
-            g.setFont(new Font("Segoe UI", Font.BOLD, 23));
+            g.setFont(new Font("Segoe UI", Font.BOLD, 26));
             g.setColor(TEXT);
             String letter = String.valueOf((char) ('A' + index));
             FontMetrics badgeMetrics = g.getFontMetrics();
@@ -2289,8 +2385,6 @@ public final class SwingUI {
         screens.show(root, screen);
     }
 
-    // Falls back to a filesystem path (relative to the working directory) when the
-    // asset wasn't copied onto the classpath, e.g. bg.wav omitted from a manual java -cp run.
     private URL resolveAudioResource(String classpathResource, String... relativeFilePaths) {
         URL url = getClass().getResource(classpathResource);
         if (url != null) {
@@ -2302,7 +2396,7 @@ public final class SwingUI {
                 try {
                     return candidate.toUri().toURL();
                 } catch (MalformedURLException e) {
-                    // try the next candidate path
+                    
                 }
             }
         }
@@ -2384,17 +2478,14 @@ public final class SwingUI {
         }
     }
 
-    // Click sound for buttons that advance toward the game loop or open Instructions.
     private void playProgressSound() {
         playSfx(SFX_PROGRESS);
     }
 
-    // Click sound for buttons that navigate back to the main menu.
     private void playBackSound() {
         playSfx(SFX_BACK);
     }
 
-    // Fire-and-forget short sound effect; the clip closes itself once playback stops.
     private void playSfx(String fileName) {
         URL url = resolveAudioResource("/sfx/" + fileName, "resources/sfx/" + fileName);
         if (url == null) {
