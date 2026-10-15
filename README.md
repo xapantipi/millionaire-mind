@@ -62,8 +62,14 @@ folders are required; Java is bundled, so the player needs no Java installation.
 `MillionaireMind-Console.exe` opens terminal gameplay. The unpackaged native
 application is also under `build/windows/MillionaireMind/`.
 
+The source ZIP contains only `src/main/java/`, the official CSV under `MCQ/`,
+used media under `resources/`, `tools/Project.java`, `build.cmd`, `run.cmd`,
+and `ReadMeFirst.txt`. Tests, developer documentation, Git settings, alternate
+launchers, and unused OGG copies stay in the repository and are excluded from
+the submission. Run tests and recreate releases from the full repository.
+
 `ReadMeFirst.txt` includes the required Command Prompt compilation, run,
-test, question-bank, and distribution instructions. Release packaging uses
+question-bank, and submission instructions. Release packaging uses
 [JDK jpackage](https://docs.oracle.com/en/java/javase/21/jpackage/packaging-overview.html)
 in application-image mode, so it needs no third-party installer tools.
 

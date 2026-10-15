@@ -182,14 +182,17 @@ public final class Project {
         verifyNativeConsole(image);
 
         List<Path> sourceFiles = new ArrayList<>();
-        for (String directory : List.of("src", "MCQ", "resources", "tools", "docs")) {
+        for (String directory : List.of("src/main/java", "resources")) {
             try (var files = Files.walk(root.resolve(directory))) {
-                sourceFiles.addAll(files.filter(Files::isRegularFile).sorted().toList());
+                sourceFiles.addAll(files.filter(Files::isRegularFile).filter(file -> {
+                    String name = file.getFileName().toString();
+                    return directory.equals("src/main/java") ? name.endsWith(".java")
+                            : name.toLowerCase(java.util.Locale.ROOT).endsWith(".wav") || name.equals("splash.gif");
+                }).sorted().toList());
             }
         }
-        for (String name : List.of("README.md", "ReadMeFirst.txt", ".gitattributes", ".gitignore",
-                "build.cmd", "build.sh", "run.cmd", "run.sh", "test.cmd", "test.sh", "release.cmd",
-                "run-swing.cmd", "run-swing.ps1", "run-swing.sh")) {
+        for (String name : List.of("MCQ/Question Bank.csv", "tools/Project.java",
+                "ReadMeFirst.txt", "build.cmd", "run.cmd")) {
             sourceFiles.add(root.resolve(name));
         }
         Path sourceZip = jar.getParent().resolve("millionaire-mind-source.zip");

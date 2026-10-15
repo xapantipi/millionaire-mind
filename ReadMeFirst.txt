@@ -62,42 +62,29 @@ while retaining the six Bloom tiers. Source readings identify modules with
 the existing "Module N / Reading.pdf" prefix. Switch selects an unused
 question from the same Bloom level AND module, preserving module quotas.
 
-5. RUN THE AUTOMATED TESTS
+5. SUBMISSION CONTENTS
 
-    test.cmd
-    test.cmd --gui
-
-The first command runs the non-GUI suite. --gui additionally opens test
-windows and exercises the Swing controls. Tests are kept in the source ZIP
-for checking and maintenance; test code is not inside the game JAR or EXE.
-
-6. RECREATE THE TWO SUBMISSION ZIPS ON WINDOWS
-
-Use a Windows JDK 17 or later that includes jpackage.exe, then enter:
-    release.cmd
-
-This rebuilds the JAR, runs non-GUI tests, creates the native Windows game
-with its own Java runtime, verifies its console launcher without system
-Java, and creates:
-    dist\millionaire-mind-source.zip
-    dist\millionaire-mind-windows.zip
-
-The unpackaged Windows image is also available at:
-    build\windows\MillionaireMind\MillionaireMind.exe
-
-The executable ZIP is for Windows. The JAR and source support Java 17+ on
-other platforms with a graphical desktop for Swing. In Bash, source ZIP
-users can run bash ./build.sh, bash ./run.sh, and bash ./test.sh.
-
-7. SOURCE FOLDERS
-
+The source ZIP contains the files needed to inspect, compile, and run:
     src\main\java     Game source classes
-    src\test\java     Dependency-free regression tests
     MCQ                Official editable question pool
-    resources          Bundled sounds and splash animation
-    tools              Shared JDK-only build and release driver
-    docs               Project activity and verification notes
+    resources          Used sounds and splash animation
+    tools\Project.java Shared JDK-only build helper used by build.cmd/run.cmd
+    build.cmd          Compile the game and create the runnable JAR
+    run.cmd            Build and launch Swing or console gameplay
+    ReadMeFirst.txt     These instructions
 
-The source ZIP omits .git, generated output, and player session logs.
-The executable ZIP contains only the native application, bundled runtime,
-game resources in the JAR, and these instructions.
+Keep tools\Project.java: both CMD scripts depend on it. Building and playing
+need only the included files and JDK 17 or later. No tests are needed to
+compile or run the submitted game.
+
+Tests and their launchers, developer notes, Git settings, alternate launchers,
+and release tooling are maintained in the full project repository rather
+than included in this submission. The game JAR and EXEs contain no tests.
+
+Submit the two separate archives:
+    millionaire-mind-source.zip    Source, bank, assets, and build instructions
+    millionaire-mind-windows.zip   Windows EXEs, bundled Java, and instructions
+
+The Windows ZIP must be extracted completely with its app/runtime folders.
+The source ZIP can be built with JDK 17+; the native Windows ZIP needs no
+installed Java. Session logs and generated build output are not submitted.
