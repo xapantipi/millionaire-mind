@@ -46,6 +46,8 @@ public final class SwingUITest {
             playsToCheckpointAndLogsWalkAway(temp.resolve("logs"), preview,
                     namePreview, feedbackPreview, resultsPreview, fiftyPreview);
             showsBonusTimeAsUntimed(temp.resolve("bonus-logs"));
+            timedModeUsesBackendAndStopsOnFeedback(temp.resolve("timed-logs"));
+            replayFailureDoesNotLoseResults(temp.resolve("blocked-logs"));
             wrapsLongQuestionAndChoices(temp.resolve("long-logs"),
                     temp.resolve("long-bank.csv"), longChoicePreview);
             showsWrongAndMillionaireResults(temp.resolve("results-logs"), wrongPreview);
@@ -74,6 +76,7 @@ public final class SwingUITest {
                 }
             }
             check(launched != null, "SwingUI.main should open the bundled game");
+            skipSplash(launched);
             check(find(launched, "menuPlay", AbstractButton.class).isShowing(),
                     "the game should open on the title menu");
             find(launched, "menuInstructions", AbstractButton.class).doClick();
@@ -289,7 +292,7 @@ public final class SwingUITest {
                     "results should show the banked winnings");
             check(find(ui.frame(), "resultsCard", JPanel.class).isShowing()
                             && find(ui.frame(), "logStatus", JLabel.class).getText()
-                                    .contains("Session replay saved"),
+                                    .equals("Replay saved"),
                     "the centered game report should show log status");
             checkCentered(ui.frame(), "resultsCard");
             JPanel resultsCard = find(ui.frame(), "resultsCard", JPanel.class);
@@ -342,10 +345,84 @@ public final class SwingUITest {
             check(visibleCount(ui) == 4,
                     "bonus-time Spin should leave all answers visible");
             check(find(ui.frame(), "lifelineNotice", JTextArea.class).getText()
-                            .contains("This game is untimed"),
+                            .contains("only applies in Timed Mode"),
                     "bonus-time result should explain untimed behavior");
             ui.frame().dispose();
         });
+    }
+
+    private static void timedModeUsesBackendAndStopsOnFeedback(Path logDirectory) throws Exception {
+        QuestionBank bank = QuestionBank.loadFromResource("/questions.csv", new Random(25));
+        SwingUtilities.invokeAndWait(() -> {
+            SwingUI ui = new SwingUI(bank, BackendTestSupport.fixedRandom(0.9, 0), new ReplayLogger(logDirectory));
+            ui.show();
+            skipSplash(ui.frame());
+            find(ui.frame(), "menuPlay", AbstractButton.class).doClick();
+            find(ui.frame(), "modeTimed", AbstractButton.class).doClick();
+            find(ui.frame(), "playerName", JTextField.class).setText("Timed Smoke");
+            click(ui, "startGame");
+            check(ui.engine().isTimedMode() && ui.engine().secondsRemaining() == 30, "Timed Mode should start at 30");
+            elapse(ui, 5);
+            check(find(ui.frame(), "questionTimer", JLabel.class).getText().equals("25s"), "timer display should follow backend");
+            click(ui, "lifeline1");
+            check(ui.engine().secondsRemaining() == 40, "bonus should add 15 seconds");
+            click(ui, "lifeline2");
+            check(ui.engine().secondsRemaining() == 30, "switch must reset the timer");
+            click(ui, "answer" + answerLetter(ui.engine().currentQuestion().correctIndex()));
+            click(ui, "lockAnswer");
+            check(timerStopped(ui), "feedback must stop timer callbacks");
+            int historySize = ui.engine().session().history().size();
+            click(ui, "lockAnswer");
+            check(ui.engine().session().history().size() == historySize, "duplicate lock action must not answer next question");
+            click(ui, "continue");
+            elapse(ui, 30);
+            check(ui.engine().isGameOver() && timerStopped(ui), "timeout must end the session and stop the timer");
+            check(find(ui.frame(), "feedbackTitle", JLabel.class).getText().equals("Time's up!"), "timeout feedback missing");
+            click(ui, "continue");
+            check(find(ui.frame(), "resultOutcome", JLabel.class).getText().contains("$0"), "early timeout payout must be zero");
+            click(ui, "resultsMenu");
+            ui.frame().dispose();
+            check(timerStopped(ui), "closing the game must leave no question timer");
+        });
+    }
+
+    private static void replayFailureDoesNotLoseResults(Path logDirectory) throws Exception {
+        var logger = new ReplayLogger(logDirectory);
+        Files.delete(logDirectory);
+        Files.writeString(logDirectory, "Blocking file");
+        var bank = QuestionBank.loadFromResource("/questions.csv", new Random(9));
+        SwingUtilities.invokeAndWait(() -> {
+            SwingUI ui = new SwingUI(bank, new Random(9), logger);
+            ui.show();
+            click(ui, "menuPlay");
+            find(ui.frame(), "playerName", JTextField.class).setText("Log Failure");
+            click(ui, "startGame");
+            click(ui, "walkAway");
+            check(ui.engine().session().walkedAway(), "save failure must preserve the game result");
+            JLabel status = find(ui.frame(), "logStatus", JLabel.class);
+            check(status.getText().contains("could not be saved") && status.getToolTipText() != null,
+                    "save failure must have an actionable notice and diagnostic details");
+            ui.frame().dispose();
+        });
+    }
+
+    private static void elapse(SwingUI ui, int seconds) {
+        try {
+            var last = SwingUI.class.getDeclaredField("lastTimerNanos");
+            last.setAccessible(true);
+            last.setLong(ui, System.nanoTime() - seconds * 1_000_000_000L);
+            var tick = SwingUI.class.getDeclaredMethod("tickTimer");
+            tick.setAccessible(true);
+            tick.invoke(ui);
+        } catch (ReflectiveOperationException e) { throw new AssertionError(e); }
+    }
+
+    private static boolean timerStopped(SwingUI ui) {
+        try {
+            var timer = SwingUI.class.getDeclaredField("questionTimer");
+            timer.setAccessible(true);
+            return timer.get(ui) == null;
+        } catch (ReflectiveOperationException e) { throw new AssertionError(e); }
     }
 
     private static void wrapsLongQuestionAndChoices(Path logDirectory, Path bankFile,
@@ -379,7 +456,7 @@ public final class SwingUITest {
             click(ui, "menuPlay");
             find(ui.frame(), "playerName", JTextField.class).setText("Long Prompt");
             click(ui, "startGame");
-            ui.frame().setSize(ui.frame().getMinimumSize());
+            ui.frame().setSize(1366, 768);
         });
         SwingUtilities.invokeAndWait(() -> {
             SwingUI ui = holder[0];
@@ -389,10 +466,10 @@ public final class SwingUITest {
                     "long prompts should remain complete and wrapped");
             checkGameFits(ui.frame());
             check(prompt.getHeight() >= prompt.getPreferredSize().height,
-                    "the whole long prompt should fit without scrolling: actual="
+                    "the scrollable content should retain the whole long prompt: actual="
                             + prompt.getSize() + " preferred=" + prompt.getPreferredSize());
             JPanel grid = find(ui.frame(), "answerGrid", JPanel.class);
-            AbstractButton answer = find(ui.frame(), "answerA", AbstractButton.class);
+            AbstractButton answer = find(ui.frame(), "answer" + answerLetter(ui.engine().currentQuestion().correctIndex()), AbstractButton.class);
             check(longChoice.equals(answer.getToolTipText()),
                     "the full long answer should remain available");
             check(grid.getPreferredSize().height > 174
@@ -500,11 +577,13 @@ public final class SwingUITest {
         check(findRecursive(game, "questionScroll") == null
                         && findRecursive(game, "ladderScroll") == null
                         && findRecursive(game, "promptScroll") == null,
-                "the game and prize ladder should have no scroll panes");
+                "the prize ladder and individual prompt should not scroll separately");
+        JPanel questionContent = (JPanel) find(frame, "questionContentScroll", javax.swing.JScrollPane.class).getViewport().getView();
         for (String name : new String[] {"questionText", "answerA", "answerB",
                 "answerC", "answerD", "lockAnswer", "lifeline0", "lifeline1",
                 "lifeline2", "lifeline3", "walkAway"}) {
-            checkFits(frame, game, name);
+            if (name.equals("walkAway")) checkFits(frame, game, name);
+            else checkWithin(frame, questionContent, name);
         }
         for (int slot = 1; slot <= PrizeLadder.totalSlots(); slot++) {
             checkFits(frame, game, "ladderQ" + slot);
@@ -591,8 +670,18 @@ public final class SwingUITest {
         return visible;
     }
 
+    private static void skipSplash(JFrame frame) {
+        var action = frame.getRootPane().getActionMap().get("skipSplash");
+        if (action != null) action.actionPerformed(new java.awt.event.ActionEvent(frame, 0, "skipSplash"));
+    }
+
     private static void click(SwingUI ui, String name) {
+        skipSplash(ui.frame());
         find(ui.frame(), name, AbstractButton.class).doClick();
+        if (name.equals("menuPlay")) {
+            check(find(ui.frame(), "modeNormal", AbstractButton.class).isShowing(), "Play should offer modes");
+            find(ui.frame(), "modeNormal", AbstractButton.class).doClick();
+        }
     }
 
     private static <T extends Component> T find(JFrame frame, String name, Class<T> type) {

@@ -18,6 +18,10 @@ public final class ConsoleUITest {
     }
 
     public static void main(String[] args) throws Exception {
+        if (args.length > 0 && args[0].equals("--child")) {
+            new ConsoleUI(new java.util.Random(17)).run(Arrays.copyOfRange(args, 1, args.length));
+            return;
+        }
         keepsFiftyFiftyOptionsRemovedUntilTheQuestionChanges();
         switchingQuestionRestoresAllOptionsForTheReplacement();
         perfectWinReportsTheTieInsteadOfStrongestAndWeakest();
@@ -60,8 +64,22 @@ public final class ConsoleUITest {
     }
 
     private static void perfectWinReportsTheTieInsteadOfStrongestAndWeakest() throws Exception {
-        String scriptedInput = "1\nPerfectPlayer\n" + "A\n".repeat(PrizeLadder.totalSlots()) + "3\n";
-        String output = runConsole(scriptedInput, perfectRunQuestionBank());
+        String csv = perfectRunQuestionBank();
+        Path bankFile = Files.createTempFile("perfect-run-", ".csv");
+        StringBuilder input = new StringBuilder("1\nPerfectPlayer\n");
+        try {
+            Files.writeString(bankFile, csv, StandardCharsets.UTF_8);
+            var random = new java.util.Random(17);
+            GameEngine engine = new GameEngine(QuestionBank.loadFromFile(bankFile, random), random, "Predict");
+            while (!engine.isGameOver()) {
+                int correct = engine.currentQuestion().correctIndex();
+                input.append((char) ('A' + correct)).append('\n');
+                engine.answer(correct);
+            }
+        } finally {
+            Files.deleteIfExists(bankFile);
+        }
+        String output = runConsole(input.append("3\n").toString(), csv);
 
         BackendTestSupport.check(output.contains("Congrats! You became a MILLIONAIRE!!!"),
                 "answering every fixture question correctly should complete the game");
@@ -101,7 +119,7 @@ public final class ConsoleUITest {
                     isWindows() ? "java.exe" : "java").toString();
             String classPath = absoluteClassPath();
             ProcessBuilder processBuilder = new ProcessBuilder(javaExecutable, "-cp", classPath,
-                    "millionairemind.ConsoleUI");
+                    "millionairemind.ConsoleUITest", "--child");
             if (questionBankFile != null) processBuilder.command().add(questionBankFile.toString());
             Process process = processBuilder.directory(temporaryDirectory.toFile())
                     .redirectErrorStream(true).redirectOutput(outputFile.toFile()).start();

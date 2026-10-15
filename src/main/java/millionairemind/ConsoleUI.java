@@ -1,6 +1,7 @@
 package millionairemind;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -10,33 +11,30 @@ import java.util.Scanner;
 import java.util.random.RandomGenerator;
 import java.util.random.RandomGeneratorFactory;
 
-/**
- * Console-based presentation layer. Mirrors the wireframes' screen flow:
- * Main Menu -> Instructions -> Question screens (with lifeline popups) ->
- * Results screen. Talks only to GameEngine; holds no game rules itself.
- */
+/** Terminal input and presentation for the untimed game engine. */
 public final class ConsoleUI {
 
     private static final String DIVIDER = "==========================================================";
 
     private final Scanner scanner = new Scanner(System.in);
-    private final RandomGenerator random = RandomGeneratorFactory.getDefault().create();
+    private final RandomGenerator random;
     private QuestionBank questionBank;
     private ReplayLogger replayLogger;
 
     public static void main(String[] args) {
-        new ConsoleUI().run(args);
+        String[] launchArgs = new String[args.length + 1];
+        launchArgs[0] = "--console";
+        System.arraycopy(args, 0, launchArgs, 1, args.length);
+        Main.main(launchArgs);
     }
 
-    private void run(String[] args) {
+    ConsoleUI() { this(RandomGeneratorFactory.getDefault().create()); }
+
+    ConsoleUI(RandomGenerator random) { this.random = random; }
+
+    void run(String[] args) throws IOException {
         String bankPath = args.length > 0 ? args[0] : null;
-        try {
-            questionBank = loadBank(bankPath);
-        } catch (IOException e) {
-            System.err.println("Failed to load question bank: " + e.getMessage());
-            System.exit(1);
-            return;
-        }
+        questionBank = loadBank(bankPath);
         replayLogger = new ReplayLogger(Paths.get("logs"));
 
         printBanner();
@@ -134,10 +132,13 @@ public final class ConsoleUI {
                 continue;
             } else if (action.equalsIgnoreCase("S")) {
                 if (engine.lifelines().isAvailable(LifelineManager.Lifeline.SWITCH_QUESTION)) {
-                    Question replacement = engine.switchQuestion();
-                    System.out.println("\n[Switch the Question] New question drawn from the same level.");
-                    q = replacement;
-                    printOptions(engine, q);
+                    try {
+                        q = engine.switchQuestion();
+                        System.out.println("\n[Switch the Question] New question drawn from the same level.");
+                        printOptions(engine, q);
+                    } catch (IllegalStateException e) {
+                        System.out.println(e.getMessage());
+                    }
                 } else {
                     System.out.println("Switch the Question already used.");
                 }
@@ -153,7 +154,7 @@ public final class ConsoleUI {
                             System.out.println("\n[Spin the Wheel] Landed on: down to two options.");
                         }
                         case GRANT_BONUS_TIME -> {
-                            System.out.println("\n[Spin the Wheel] Landed on: +30 bonus seconds (timer mode).");
+                            System.out.println("\n[Spin the Wheel] Bonus time applies only in Timed Mode; console play is untimed.");
                         }
                     }
                     printOptions(engine, q);
@@ -174,8 +175,12 @@ public final class ConsoleUI {
         }
 
         showResultsScreen(engine);
-        Path logPath = replayLogger.logSession(engine.session());
-        System.out.println("Session log saved to: " + logPath.toAbsolutePath());
+        try {
+            Path logPath = replayLogger.logSession(engine.session());
+            System.out.println("Session log saved to: " + logPath.toAbsolutePath());
+        } catch (UncheckedIOException e) {
+            System.err.println("Replay log could not be saved: " + e.getMessage());
+        }
     }
 
     private void printQuestionScreen(GameEngine engine, Question q) {
@@ -285,6 +290,7 @@ public final class ConsoleUI {
 
     private String prompt(String message) {
         System.out.print(message);
-        return scanner.nextLine();
+        return scanner.hasNextLine() ? scanner.nextLine().trim()
+                : message.contains("Answer (A-D)") ? "W" : "3";
     }
 }

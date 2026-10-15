@@ -31,9 +31,7 @@ import java.awt.event.WindowEvent;
 import java.awt.geom.Path2D;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.net.MalformedURLException;
 import java.net.URL;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -42,14 +40,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.random.RandomGenerator;
 import java.util.random.RandomGeneratorFactory;
-import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.Clip;
-import javax.sound.sampled.FloatControl;
-import javax.sound.sampled.LineEvent;
-import javax.sound.sampled.LineUnavailableException;
-import javax.sound.sampled.UnsupportedAudioFileException;
 import javax.swing.AbstractAction;
 import javax.swing.ActionMap;
 import javax.swing.Box;
@@ -75,7 +65,7 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.text.View;
 
-/** A separate, untimed Swing presentation for the existing game engine. */
+/** Swing presentation for normal and timed games. */
 public final class SwingUI {
 
     private static final Color BACKGROUND = new Color(14, 34, 62);
@@ -135,14 +125,12 @@ public final class SwingUI {
     private final TimerBadge timerLabel = new TimerBadge();
     private final JPanel timerBox = buildTimerBox();
     private Timer questionTimer;
-    private int secondsRemaining;
+    private long lastTimerNanos;
+    private String currentScreen;
     private JButton menuPlayButton;
     private JButton startButton;
     private JPanel resultsPage;
-    private Clip backgroundMusic;
-    private String backgroundMusicResource;
-    private Clip splashAudio;
-    private Clip resultsAudio;
+    private final GameAudio audio = new GameAudio();
     private SplashOverlay splashOverlay;
     private Timer splashHoldTimer;
     private Timer splashFadeTimer;
@@ -150,7 +138,6 @@ public final class SwingUI {
     private static final int SPLASH_HOLD_MS = 20000;
     private static final int SPLASH_FADE_MS = 600;
     private static final float BACKGROUND_MUSIC_LEVEL = 0.30f;
-    private static final float BUTTON_SFX_GAIN_DB = 3.0f;
     private static final String SFX_PROGRESS = "niera_sound_5.wav";
     private static final String SFX_BACK = "niera_sound_2.wav";
     private static final String SFX_ANSWER_SELECT = "select_005.wav";
@@ -160,21 +147,28 @@ public final class SwingUI {
     private static final String SFX_REGULAR_WIN = "regular winning.WAV";
     private static final String SFX_SUPREME_VICTORY = "supreme victory.WAV";
     private static final String SFX_NO_CHECKPOINT = "Clapping Sound Effects.WAV";
-    private static final String CHECKPOINT_MUSIC = "checkpoint-suspense.wav";
-    private static final String GAMEPLAY_MUSIC = "gameplay-theme.wav";
+    private static final String CHECKPOINT_MUSIC = "sfx/suspense.WAV";
+    private static final String GAMEPLAY_MUSIC = "sfx/q12.WAV";
 
     private Image splashImage;
 
     public static void main(String[] args) {
+        Main.main(args);
+    }
+
+    static void launch(String[] args) throws IOException {
         RandomGenerator random = RandomGeneratorFactory.getDefault().create();
         try {
             QuestionBank bank = args.length > 0
                     ? QuestionBank.loadFromFile(Paths.get(args[0]), random)
                     : QuestionBank.loadFromResource("/questions.csv", random);
             ReplayLogger logger = new ReplayLogger(Paths.get("logs"));
-            SwingUtilities.invokeLater(() -> new SwingUI(bank, random, logger).show());
-        } catch (IOException | UncheckedIOException e) {
-            System.err.println("Failed to start Millionaire Mind: " + e.getMessage());
+            SwingUtilities.invokeAndWait(() -> new SwingUI(bank, random, logger).show());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Interrupted while opening the game", e);
+        } catch (java.lang.reflect.InvocationTargetException e) {
+            throw new IOException("Could not open the game window: " + e.getCause().getMessage(), e);
         }
     }
 
@@ -204,7 +198,14 @@ public final class SwingUI {
                 exitApplication();
             }
         });
-        Runtime.getRuntime().addShutdownHook(new Thread(this::stopBackgroundMusic, "bg-music-shutdown"));
+        frame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosed(WindowEvent event) {
+                stopQuestionTimer();
+                stopSplash();
+                audio.close();
+            }
+        });
         applyFullScreenBounds();
         showMainMenu();
     }
@@ -219,10 +220,10 @@ public final class SwingUI {
     }
 
     private void exitApplication() {
-        stopBackgroundMusic();
-        stopResultsAudio();
+        stopQuestionTimer();
+        stopSplash();
+        audio.close();
         frame.dispose();
-        System.exit(0);
     }
 
     void show() {
@@ -734,7 +735,13 @@ public final class SwingUI {
         center.setOpaque(false);
         center.setBorder(new EmptyBorder(20, 20, 20, 20));
         center.add(card);
-        page.add(center, BorderLayout.CENTER);
+        // Preserve readable card sizes; smaller displays can scroll instead of clipping controls.
+        JScrollPane scroll = new JScrollPane(center);
+        scroll.setBorder(null);
+        scroll.setOpaque(false);
+        scroll.getViewport().setOpaque(false);
+        scroll.getVerticalScrollBar().setUnitIncrement(24);
+        page.add(scroll, BorderLayout.CENTER);
         return page;
     }
 
@@ -814,9 +821,7 @@ public final class SwingUI {
         heading.add(progressStrip, BorderLayout.SOUTH);
         main.add(heading, BorderLayout.NORTH);
 
-        JPanel body = new JPanel();
-        body.setOpaque(false);
-        body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
+        JPanel body = new ScrollableColumn();
         questionBody = body;
         promptBox = panel(new BorderLayout(10, 0), 10);
         promptBox.setBackground(PANEL_DARK);
@@ -925,7 +930,14 @@ public final class SwingUI {
         noticeText.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
         noticeText.setAlignmentX(0);
         body.add(noticeText);
-        main.add(body, BorderLayout.CENTER);
+        JScrollPane questionScroll = new JScrollPane(body);
+        questionScroll.setName("questionContentScroll");
+        questionScroll.setBorder(null);
+        questionScroll.setOpaque(false);
+        questionScroll.getViewport().setOpaque(false);
+        questionScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        questionScroll.getVerticalScrollBar().setUnitIncrement(24);
+        main.add(questionScroll, BorderLayout.CENTER);
         return main;
     }
 
@@ -967,15 +979,18 @@ public final class SwingUI {
         feedbackDetail.setFocusable(false);
         feedbackDetail.setBackground(PANEL_DARK);
         feedbackDetail.setBorder(new EmptyBorder(15, 18, 15, 18));
-        feedbackDetail.setPreferredSize(new Dimension(620, 220));
-        feedbackDetail.setMaximumSize(new Dimension(620, 220));
-        feedbackDetail.setAlignmentX(Component.CENTER_ALIGNMENT);
-        body.add(feedbackDetail);
+        JScrollPane feedbackScroll = new JScrollPane(feedbackDetail);
+        feedbackScroll.setBorder(null);
+        feedbackScroll.setPreferredSize(new Dimension(620, 220));
+        feedbackScroll.setMaximumSize(new Dimension(620, 220));
+        feedbackScroll.setAlignmentX(Component.CENTER_ALIGNMENT);
+        body.add(feedbackScroll);
         card.add(body, BorderLayout.CENTER);
         continueButton.setName("continue");
         continueButton.setMnemonic(KeyEvent.VK_C);
         continueButton.setPreferredSize(new Dimension(220, 54));
         continueButton.addActionListener(event -> {
+            if (!"feedback".equals(currentScreen)) return;
             playProgressSound();
             if (engine.isGameOver()) finishGame();
             else {
@@ -1029,6 +1044,9 @@ public final class SwingUI {
         walkButton.setMaximumSize(new Dimension(Integer.MAX_VALUE, 58));
         walkButton.setAlignmentX(Component.CENTER_ALIGNMENT);
         walkButton.addActionListener(event -> {
+            if (!activeGame()) return;
+            tickTimer();
+            if (!activeGame()) return;
             playProgressSound();
             stopQuestionTimer();
             engine.walkAway();
@@ -1075,6 +1093,7 @@ public final class SwingUI {
     }
 
     private void startSession() {
+        if (!"name".equals(currentScreen)) return;
         String name = nameField.getText().trim();
         if (name.isEmpty()) {
             playSfx(SFX_ACTION_ERROR);
@@ -1095,7 +1114,12 @@ public final class SwingUI {
         fitQuestionContent();
     }
 
+    private boolean activeGame() {
+        return "game".equals(currentScreen) && engine != null && !engine.isGameOver();
+    }
+
     private void selectAnswer(int index) {
+        if (!activeGame()) return;
         if (!engine.isOptionVisible(index)) {
             playSfx(SFX_ACTION_ERROR);
             return;
@@ -1107,6 +1131,9 @@ public final class SwingUI {
     }
 
     private void lockAnswer() {
+        if (!activeGame()) return;
+        tickTimer();
+        if (!activeGame()) return;
         if (selectedIndex < 0 || !engine.isOptionVisible(selectedIndex)) {
             playSfx(SFX_ACTION_ERROR);
             return;
@@ -1134,6 +1161,9 @@ public final class SwingUI {
     }
 
     private void useLifeline(int index) {
+        if (!activeGame()) return;
+        tickTimer();
+        if (!activeGame()) return;
         LifelineManager.Lifeline[] types = LifelineManager.Lifeline.values();
         if (index < 0 || index >= types.length) {
             throw new IllegalArgumentException("Unknown lifeline");
@@ -1159,7 +1189,6 @@ public final class SwingUI {
                             noticeText.setText("Spin the Wheel reduced the choices to two.");
                         case GRANT_BONUS_TIME -> {
                             if (engine.isTimedMode()) {
-                                secondsRemaining += GameEngine.BONUS_TIME_SECONDS;
                                 updateTimerLabel();
                                 noticeText.setText("Spin the Wheel granted +" + GameEngine.BONUS_TIME_SECONDS + " bonus seconds!");
                             } else {
@@ -1172,6 +1201,7 @@ public final class SwingUI {
                 case 2 -> {
                     engine.switchQuestion();
                     renderQuestion();
+                    startOrStopQuestionTimer();
                     frame.validate();
                     fitQuestionContent();
                     noticeText.setText("New question from the same Bloom level.");
@@ -1213,7 +1243,6 @@ public final class SwingUI {
         refreshAnswerButtons();
         refreshLifelines();
         renderLadder();
-        startOrStopQuestionTimer();
         frame.getRootPane().setDefaultButton(lockButton);
     }
 
@@ -1241,6 +1270,12 @@ public final class SwingUI {
 
     private void fitQuestionContent() {
         if (engine == null || questionBody.getHeight() <= 0) return;
+        int availableHeight = questionBody.getParent().getHeight();
+        View noticeView = noticeText.getUI().getRootView(noticeText);
+        noticeView.setSize(Math.max(80, questionBody.getWidth()), Short.MAX_VALUE);
+        int noticeHeight = Math.max(42, (int) Math.ceil(noticeView.getPreferredSpan(View.Y_AXIS)) + 6);
+        noticeText.setPreferredSize(new Dimension(500, noticeHeight));
+        noticeText.setMaximumSize(new Dimension(Integer.MAX_VALUE, noticeHeight));
         for (int step = 0; step <= 12; step++) {
             int promptSize = Math.max(20, 30 - step);
             int answerSize = Math.max(15, 20 - step / 2);
@@ -1251,10 +1286,10 @@ public final class SwingUI {
             adjustPromptHeight();
             adjustAnswerGridHeight();
             frame.validate();
-            if (questionBody.getPreferredSize().height <= questionBody.getHeight()) break;
+            if (questionBody.getPreferredSize().height <= availableHeight) break;
         }
 
-        int spare = questionBody.getHeight() - questionBody.getPreferredSize().height;
+        int spare = availableHeight - questionBody.getPreferredSize().height;
         if (spare > 24 && answerRows[0] != null && answerRows[1] != null) {
             int addedPerRow = Math.min(64, spare / 2);
             int[] heights = new int[2];
@@ -1302,33 +1337,32 @@ public final class SwingUI {
 
     private void startOrStopQuestionTimer() {
         stopQuestionTimer();
+        timerBox.setVisible(engine.isTimedMode());
         if (engine.isTimedMode()) {
-            timerBox.setVisible(true);
-            secondsRemaining = GameEngine.TIMER_SECONDS;
+            lastTimerNanos = System.nanoTime();
             updateTimerLabel();
-            questionTimer = new Timer(1000, event -> tickTimer());
+            questionTimer = new Timer(100, event -> tickTimer());
             questionTimer.start();
-        } else {
-            timerBox.setVisible(false);
         }
     }
 
     private void tickTimer() {
-        secondsRemaining--;
-        if (secondsRemaining <= 0) {
-            if (questionTimer != null) {
-                questionTimer.stop();
-                questionTimer = null;
-            }
-            handleTimeExpired();
-            return;
-        }
+        if (questionTimer == null || !activeGame()) return;
+        long now = System.nanoTime();
+        long elapsed = (now - lastTimerNanos) / 1_000_000_000L;
+        if (elapsed == 0) return;
+        lastTimerNanos += elapsed * 1_000_000_000L;
+        engine.advanceTime((int) Math.min(elapsed, Integer.MAX_VALUE));
         updateTimerLabel();
+        if (engine.isGameOver()) {
+            stopQuestionTimer();
+            handleTimeExpired();
+        }
     }
 
     private void updateTimerLabel() {
-        timerLabel.setText(secondsRemaining + "s");
-        timerLabel.setUrgent(secondsRemaining <= 10);
+        timerLabel.setText(engine.secondsRemaining() + "s");
+        timerLabel.setUrgent(engine.secondsRemaining() <= 10);
     }
 
     private void stopQuestionTimer() {
@@ -1339,43 +1373,15 @@ public final class SwingUI {
     }
 
     private void playResultsSound(String fileName) {
-        stopResultsAudio();
-        URL url = resolveAudioResource("/sfx/" + fileName, "resources/sfx/" + fileName);
-        if (url == null) {
-            System.err.println("Results sound not found: " + fileName);
-            return;
-        }
-        try (AudioInputStream audioStream = AudioSystem.getAudioInputStream(url)) {
-            Clip clip = AudioSystem.getClip();
-            clip.addLineListener(event -> {
-                if (event.getType() == LineEvent.Type.STOP) {
-                    if (resultsAudio == clip) resultsAudio = null;
-                    clip.close();
-                }
-            });
-            clip.open(audioStream);
-            resultsAudio = clip;
-            clip.start();
-        } catch (UnsupportedAudioFileException | IOException | LineUnavailableException e) {
-            resultsAudio = null;
-            System.err.println("Could not play results sound " + fileName + ": " + e.getMessage());
-        }
+        audio.play(GameAudio.Channel.RESULTS, "/sfx/" + fileName, 1f, false);
     }
 
     private void stopResultsAudio() {
-        if (resultsAudio != null) {
-            Clip clip = resultsAudio;
-            resultsAudio = null;
-            clip.stop();
-            clip.flush();
-            clip.close();
-        }
+        audio.stop(GameAudio.Channel.RESULTS);
     }
 
     private void handleTimeExpired() {
-        if (engine.isGameOver()) return;
         Question resolved = engine.currentQuestion();
-        engine.timeExpired();
         feedbackTitle.setText("Time's up!");
         feedbackTitle.setForeground(RED);
         feedbackEmblem.setCorrect(false);
@@ -1454,6 +1460,7 @@ public final class SwingUI {
             logPath = replayLogger.logSession(engine.session());
         } catch (UncheckedIOException e) {
             logError = e.getMessage();
+            System.err.println("Replay log could not be saved: " + logError);
         }
         if (resultsPage != null) root.remove(resultsPage);
         resultsPage = buildResultsScreen(logPath, logError);
@@ -1528,8 +1535,9 @@ public final class SwingUI {
             details.add(Box.createVerticalStrut(10));
         }
 
-        JLabel logStatus = label(logPath != null ? "Session replay saved"
-                : "Replay log could not be saved: " + logError, 17, false, MUTED);
+        JLabel logStatus = label(logPath != null ? "Replay saved"
+                : "Replay could not be saved. Check that the logs folder is writable.", 17, false, MUTED);
+        logStatus.setToolTipText(logPath != null ? logPath.toAbsolutePath().toString() : logError);
         logStatus.setName("logStatus");
         logStatus.setAlignmentX(Component.CENTER_ALIGNMENT);
         details.add(logStatus);
@@ -1597,6 +1605,24 @@ public final class SwingUI {
 
     private static JPanel page() {
         return new PageBackground();
+    }
+
+    /** Keeps wrapped text complete when a small display needs a vertical scrollbar. */
+    private static final class ScrollableColumn extends JPanel implements javax.swing.Scrollable {
+        ScrollableColumn() {
+            setOpaque(false);
+            setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+        }
+
+        public Dimension getPreferredScrollableViewportSize() { return getPreferredSize(); }
+        public int getScrollableUnitIncrement(Rectangle visible, int orientation, int direction) { return 24; }
+        public int getScrollableBlockIncrement(Rectangle visible, int orientation, int direction) {
+            return Math.max(24, visible.height - 24);
+        }
+        public boolean getScrollableTracksViewportWidth() { return true; }
+        public boolean getScrollableTracksViewportHeight() {
+            return getParent() != null && getParent().getHeight() >= getPreferredSize().height;
+        }
     }
 
     private static JPanel panel(java.awt.LayoutManager layout, int padding) {
@@ -2367,184 +2393,60 @@ public final class SwingUI {
     }
 
     private void showScreen(String screen, boolean playBackgroundMusic) {
+        currentScreen = screen;
+        stopQuestionTimer();
         if (!"results".equals(screen)) stopResultsAudio();
         if ("game".equals(screen) && engine != null) {
             if (PrizeLadder.isCheckpoint(engine.currentSlot())
                     || engine.currentSlot() == PrizeLadder.totalSlots()) {
-                startBackgroundMusic("/" + CHECKPOINT_MUSIC,
-                        "resources/sfx/suspense.WAV");
+                startBackgroundMusic("/" + CHECKPOINT_MUSIC);
             } else {
-                startBackgroundMusic("/" + GAMEPLAY_MUSIC,
-                        "resources/sfx/q12.WAV");
+                startBackgroundMusic("/" + GAMEPLAY_MUSIC);
             }
         } else if (playBackgroundMusic) {
-            startBackgroundMusic("/bg.wav", "resources/bg.wav");
+            startBackgroundMusic("/bg.wav");
         } else {
             stopBackgroundMusic();
         }
         screens.show(root, screen);
-    }
-
-    private URL resolveAudioResource(String classpathResource, String... relativeFilePaths) {
-        URL url = getClass().getResource(classpathResource);
-        if (url != null) {
-            return url;
-        }
-        for (String relativePath : relativeFilePaths) {
-            Path candidate = Paths.get(relativePath);
-            if (Files.isRegularFile(candidate)) {
-                try {
-                    return candidate.toUri().toURL();
-                } catch (MalformedURLException e) {
-                    
-                }
-            }
-        }
-        return null;
+        if ("game".equals(screen)) startOrStopQuestionTimer();
     }
 
     private void startBackgroundMusic() {
-        startBackgroundMusic("/bg.wav", "resources/bg.wav");
+        startBackgroundMusic("/bg.wav");
     }
 
-    private void startBackgroundMusic(String classpathResource, String filePath) {
-        if (backgroundMusic != null && backgroundMusic.isRunning()
-                && classpathResource.equals(backgroundMusicResource)) {
-            return;
-        }
-        stopBackgroundMusic();
-
-        URL url = resolveAudioResource(classpathResource, filePath);
-        if (url == null) {
-            System.err.println("Background music not found: " + classpathResource + " or " + filePath);
-            return;
-        }
-
-        try (AudioInputStream sourceStream = AudioSystem.getAudioInputStream(url)) {
-            AudioFormat sourceFormat = sourceStream.getFormat();
-            AudioFormat playbackFormat = new AudioFormat(
-                    AudioFormat.Encoding.PCM_SIGNED,
-                    sourceFormat.getSampleRate(),
-                    16,
-                    sourceFormat.getChannels(),
-                    sourceFormat.getChannels() * 2,
-                    sourceFormat.getSampleRate(),
-                    false);
-            if (!AudioSystem.isConversionSupported(playbackFormat, sourceFormat)) {
-                System.err.println("Background music format cannot be converted for playback: "
-                        + sourceFormat);
-                return;
-            }
-
-            try (AudioInputStream playbackStream =
-                    AudioSystem.getAudioInputStream(playbackFormat, sourceStream)) {
-                Clip clip = AudioSystem.getClip();
-                try {
-                    clip.open(playbackStream);
-                    setBackgroundMusicVolume(clip);
-                    clip.loop(Clip.LOOP_CONTINUOUSLY);
-                    clip.start();
-                    backgroundMusic = clip;
-                    backgroundMusicResource = classpathResource;
-                } catch (LineUnavailableException e) {
-                    clip.close();
-                    throw e;
-                }
-            }
-        } catch (UnsupportedAudioFileException | IOException | LineUnavailableException e) {
-            backgroundMusic = null;
-            System.err.println("Could not play background music: " + e.getMessage());
-        }
-    }
-
-    private void setBackgroundMusicVolume(Clip clip) {
-        if (!clip.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
-            System.err.println("Background music volume control is not supported by the audio mixer.");
-            return;
-        }
-
-        FloatControl gain = (FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
-        float gainDecibels = (float) (20.0 * Math.log10(BACKGROUND_MUSIC_LEVEL));
-        gain.setValue(Math.max(gain.getMinimum(), Math.min(gain.getMaximum(), gainDecibels)));
+    private void startBackgroundMusic(String resource) {
+        audio.play(GameAudio.Channel.MUSIC, resource, BACKGROUND_MUSIC_LEVEL, true);
     }
 
     private void stopBackgroundMusic() {
-        if (backgroundMusic != null) {
-            backgroundMusic.stop();
-            backgroundMusic.flush();
-            backgroundMusic.close();
-            backgroundMusic = null;
-            backgroundMusicResource = null;
-        }
+        audio.stop(GameAudio.Channel.MUSIC);
     }
 
-    private void playProgressSound() {
-        playSfx(SFX_PROGRESS);
-    }
-
-    private void playBackSound() {
-        playSfx(SFX_BACK);
-    }
+    private void playProgressSound() { playSfx(SFX_PROGRESS); }
+    private void playBackSound() { playSfx(SFX_BACK); }
 
     private void playSfx(String fileName) {
-        URL url = resolveAudioResource("/sfx/" + fileName, "resources/sfx/" + fileName);
-        if (url == null) {
-            System.err.println("Sound effect not found on classpath or in resources/sfx/" + fileName);
-            return;
-        }
-
-        try (AudioInputStream audioStream = AudioSystem.getAudioInputStream(url)) {
-            Clip clip = AudioSystem.getClip();
-            clip.addLineListener(event -> {
-                if (event.getType() == LineEvent.Type.STOP) {
-                    clip.close();
-                }
-            });
-            clip.open(audioStream);
-            if (clip.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
-                FloatControl gain = (FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
-                gain.setValue(Math.min(gain.getMaximum(),
-                        Math.max(gain.getMinimum(), BUTTON_SFX_GAIN_DB)));
-            } else {
-                System.err.println("Button sound volume control is not supported by the audio mixer.");
-            }
-            clip.start();
-        } catch (UnsupportedAudioFileException | IOException | LineUnavailableException e) {
-            System.err.println("Could not play sound effect " + fileName + ": " + e.getMessage());
-        }
+        audio.play(GameAudio.Channel.EFFECT, "/sfx/" + fileName, 1f, false);
     }
 
     private void playSplashAudio() {
-        URL url = getClass().getResource("/splash.wav");
-        if (url == null) {
-            System.err.println("Splash audio not found on classpath: /splash.wav");
-            return;
-        }
-        try (AudioInputStream audioStream = AudioSystem.getAudioInputStream(url)) {
-            Clip clip = AudioSystem.getClip();
-            clip.open(audioStream);
-            splashAudio = clip;
-            clip.addLineListener(event -> {
-                if (event.getType() == LineEvent.Type.STOP) {
-                    if (splashAudio == clip) {
-                        splashAudio = null;
-                    }
-                    clip.close();
-                }
-            });
-            clip.start();
-        } catch (UnsupportedAudioFileException | IOException | LineUnavailableException e) {
-            System.err.println("Could not play splash audio: " + e.getMessage());
-        }
+        audio.play(GameAudio.Channel.SPLASH, "/splash.wav", 1f, false);
     }
 
     private void stopSplashAudio() {
-        if (splashAudio != null) {
-            Clip clip = splashAudio;
-            splashAudio = null;
-            clip.stop();
-            clip.flush();
-            clip.close();
-        }
+        audio.stop(GameAudio.Channel.SPLASH);
+    }
+
+    private void stopSplash() {
+        if (splashHoldTimer != null) splashHoldTimer.stop();
+        if (splashFadeTimer != null) splashFadeTimer.stop();
+        stopSplashAudio();
+        removeSplashEnterBinding();
+        if (splashOverlay != null) splashOverlay.setVisible(false);
+        splashOverlay = null;
+        if (splashImage != null) splashImage.flush();
+        splashImage = null;
     }
 }
