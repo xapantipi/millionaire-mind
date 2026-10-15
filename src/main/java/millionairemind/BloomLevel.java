@@ -1,10 +1,6 @@
 package millionairemind;
 
-/**
- * The six cognitive levels of Bloom's Taxonomy that the 15-question ladder
- * is organized around. Each level owns a contiguous range of question slots
- * (1-indexed, inclusive) as defined in the proposal's Section 3.
- */
+/** The six Bloom levels and their inclusive question-slot ranges. */
 public enum BloomLevel {
     REMEMBERING("Remembering", 1, 2),
     UNDERSTANDING("Understanding", 3, 5),

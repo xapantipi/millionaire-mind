@@ -157,9 +157,9 @@ public final class GameEngineTest {
         BackendTestSupport.check(visibleCount(reverseOrder) == 3,
                 "reveal-one spin should hide one wrong choice");
         reverseOrder.useFiftyFifty();
-        BackendTestSupport.check(visibleCount(reverseOrder) == 2
-                        && reverseOrder.isOptionVisible(0),
-                "50:50 after Spin should replace the mask as the console previously did");
+        BackendTestSupport.check(visibleCount(reverseOrder) <= 2
+                        && reverseOrder.isOptionVisible(reverseOrder.currentQuestion().correctIndex()),
+                "50:50 after Spin should preserve the correct answer without restoring options");
 
         GameEngine untimed = new GameEngine(BackendTestSupport.questionBank(),
                 BackendTestSupport.fixedRandom(0.9, 0), "Untimed");

@@ -1,10 +1,6 @@
 package millionairemind;
 
-/**
- * The 15-rung prize ladder. Slot 5 (end of Understanding) and slot 10
- * (end of Analyzing) are guaranteed checkpoints, matching Section 3 of
- * the proposal.
- */
+/** Prize values and the guaranteed checkpoints at Q5 and Q10. */
 public final class PrizeLadder {
 
     private static final long[] PRIZES = {

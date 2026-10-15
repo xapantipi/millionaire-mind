@@ -5,13 +5,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.random.RandomGenerator;
 
-/**
- * Owns game state (current question index, prize ladder position,
- * checkpoints, lifelines used) and enforces the rules in Section 3 of the
- * proposal: 15 questions across six Bloom's tiers, two guaranteed
- * checkpoints (Q5, Q10), drop-to-last-checkpoint on a wrong answer, and
- * walk-away banking.
- */
+/** Owns progression, lifeline effects, timing, and checkpoint payouts. */
 public final class GameEngine {
 
     public enum AnswerOutcome { CORRECT, WRONG_DROPPED_TO_CHECKPOINT, WRONG_GAME_OVER, TIMEOUT_DROPPED_TO_CHECKPOINT, TIMEOUT_GAME_OVER }
@@ -25,11 +19,16 @@ public final class GameEngine {
     private final Set<String> usedQuestionIds = new HashSet<>();
     private final boolean[] visibleOptions = new boolean[4];
     private final boolean timedMode;
+    private int secondsRemaining;
 
     private int currentSlot = 1; // 1-indexed, 1-15
     private Question currentQuestion;
 
     private boolean gameOver = false;
+
+    public GameEngine(QuestionBank questionBank, RandomGenerator random, String playerName) {
+        this(questionBank, random, playerName, false);
+    }
 
     public GameEngine(QuestionBank questionBank, RandomGenerator random, String playerName, boolean timedMode) {
         this.questionBank = questionBank;
@@ -44,6 +43,7 @@ public final class GameEngine {
         BloomLevel level = BloomLevel.forSlot(currentSlot);
         this.currentQuestion = questionBank.drawQuestion(level, usedQuestionIds);
         usedQuestionIds.add(currentQuestion.id());
+        secondsRemaining = timedMode ? TIMER_SECONDS : 0;
     }
 
     public int currentSlot() { return currentSlot; }
@@ -56,15 +56,25 @@ public final class GameEngine {
     public PlayerSession session() { return session; }
     public QuestionBank questionBank() { return questionBank; }
     public boolean isTimedMode() { return timedMode; }
+    public int secondsRemaining() { return secondsRemaining; }
+
+    /** Applies elapsed gameplay seconds; stopped UI screens must not advance time. */
+    public void advanceTime(int seconds) {
+        if (seconds < 0) throw new IllegalArgumentException("Elapsed seconds cannot be negative");
+        if (!timedMode || gameOver) return;
+        secondsRemaining = Math.max(0, secondsRemaining - seconds);
+        if (secondsRemaining == 0) timeExpired();
+    }
 
     public boolean isOptionVisible(int index) { return visibleOptions[index]; }
 
-    /** 50:50 replaces the current option mask, matching the console behavior. */
+    /** Intersect with the existing mask so earlier lifelines stay effective. */
     public void useFiftyFifty() {
         ensureActive();
         int[] kept = lifelineManager.fiftyFifty(currentQuestion);
-        Arrays.fill(visibleOptions, false);
-        for (int index : kept) visibleOptions[index] = true;
+        for (int i = 0; i < visibleOptions.length; i++) {
+            visibleOptions[i] &= i == kept[0] || i == kept[1];
+        }
     }
 
     /** Applies the visual option effect; bonus time has no effect in untimed play. */
@@ -93,7 +103,9 @@ public final class GameEngine {
                 visibleOptions[correct] = true;
                 visibleOptions[kept] = true;
             }
-            case GRANT_BONUS_TIME -> { /* Timer mode is not active. */ }
+            case GRANT_BONUS_TIME -> {
+                if (timedMode) secondsRemaining += BONUS_TIME_SECONDS;
+            }
         }
         return outcome;
     }
@@ -117,6 +129,9 @@ public final class GameEngine {
      */
     public AnswerOutcome answer(int chosenIndex) {
         if (gameOver) throw new IllegalStateException("Game is already over");
+        if (chosenIndex < 0 || chosenIndex >= visibleOptions.length || !visibleOptions[chosenIndex]) {
+            throw new IllegalArgumentException("Choose a visible answer from A to D");
+        }
         boolean correct = currentQuestion.isCorrect(chosenIndex);
         session.recordAnswer(currentSlot, currentQuestion, chosenIndex, correct);
 
@@ -142,6 +157,8 @@ public final class GameEngine {
 
     public AnswerOutcome timeExpired() {
         if (gameOver) throw new IllegalStateException("Game is already over");
+        if (!timedMode) throw new IllegalStateException("The game is untimed");
+        secondsRemaining = 0;
         session.recordAnswer(currentSlot, currentQuestion, -1, false);
         long banked = PrizeLadder.checkpointBankFor(currentSlot - 1);
         session.setBankedWinnings(banked);
@@ -165,12 +182,27 @@ public final class GameEngine {
      */
     public Question switchQuestion() {
         if (gameOver) throw new IllegalStateException("Game is already over");
-        lifelineManager.useSwitchQuestion();
+        if (!lifelineManager.isAvailable(LifelineManager.Lifeline.SWITCH_QUESTION)) {
+            throw new IllegalStateException("SWITCH_QUESTION has already been used this game");
+        }
         BloomLevel level = currentLevel();
+        if (questionBank.unusedCount(level, usedQuestionIds) <= remainingSlotsForLevel(level)) {
+            throw new IllegalStateException("No spare question remains for this level");
+        }
         Question replacement = questionBank.drawAlternate(level, usedQuestionIds);
+        lifelineManager.useSwitchQuestion();
         usedQuestionIds.add(replacement.id());
         this.currentQuestion = replacement;
         resetVisibleOptions();
+        secondsRemaining = timedMode ? TIMER_SECONDS : 0;
         return replacement;
+    }
+
+    private int remainingSlotsForLevel(BloomLevel level) {
+        int remaining = 0;
+        for (int slot = currentSlot + 1; slot <= PrizeLadder.totalSlots(); slot++) {
+            if (BloomLevel.forSlot(slot) == level) remaining++;
+        }
+        return remaining;
     }
 }

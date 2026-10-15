@@ -50,7 +50,7 @@ public final class QuestionBankTest {
         check(special != null, "special question was not drawn");
         check(special.prompt().equals("Prompt with, comma and \"quote\"\r\ncontinued on the next line"),
                 "quoted multiline prompt was not preserved");
-        check(special.options().get(0).equals("Option A, with a comma"),
+        check(special.options().contains("Option A, with a comma"),
                 "quoted comma in an option was not preserved");
         check(special.hint().equals("Hint line one\r\nHint line two"),
                 "quoted multiline hint was not preserved");

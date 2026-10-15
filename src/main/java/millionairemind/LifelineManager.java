@@ -4,16 +4,11 @@ import java.util.EnumSet;
 import java.util.Set;
 import java.util.random.RandomGenerator;
 
-/**
- * Tracks and applies the four reworked lifelines described in Section 5:
- * 50:50, Spin the Wheel, Switch the Question, and Phone a Friend.
- * Each lifeline may be used at most once per game.
- */
+/** Tracks the four lifelines and their single-use outcomes. */
 public final class LifelineManager {
 
     public enum Lifeline { FIFTY_FIFTY, SPIN_THE_WHEEL, SWITCH_QUESTION, PHONE_A_FRIEND }
 
-    /** Outcomes a Spin the Wheel result can land on. */
     public enum SpinOutcome {
         REVEAL_ONE_WRONG_OPTION,
         REDUCE_TWO_OPTIONS,
@@ -51,10 +46,8 @@ public final class LifelineManager {
     public int[] fiftyFifty(Question question) {
         markUsed(Lifeline.FIFTY_FIFTY);
         int correct = question.correctIndex();
-        int keptWrong;
-        do {
-            keptWrong = random.nextInt(4);
-        } while (keptWrong == correct);
+        int keptWrong = random.nextInt(3);
+        if (keptWrong >= correct) keptWrong++;
         int[] remainingIdx = {correct, keptWrong};
         java.util.Arrays.sort(remainingIdx);
         return remainingIdx;

@@ -18,7 +18,7 @@ public final class LifelineManagerTest {
 
     private static void fiftyFiftyKeepsTheCorrectAnswerAndOneWrongOption() {
         Question question = BackendTestSupport.question("L1", BloomLevel.REMEMBERING, 1);
-        LifelineManager manager = new LifelineManager(BackendTestSupport.fixedRandom(0.1, 3));
+        LifelineManager manager = new LifelineManager(BackendTestSupport.fixedRandom(0.1, 2));
 
         int[] remaining = manager.fiftyFifty(question);
         BackendTestSupport.check(Arrays.equals(remaining, new int[]{1, 3}),

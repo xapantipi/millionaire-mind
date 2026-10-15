@@ -6,11 +6,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Tracks a single player's progress through a run: banked winnings,
- * current slot, and the per-question history that feeds both the
- * end-of-game Bloom's report and the session replay log.
- */
+/** Tracks player results and computes the per-level Bloom report. */
 public final class PlayerSession {
 
     /** One resolved question in the session history. */
@@ -47,7 +43,7 @@ public final class PlayerSession {
         history.add(new Result(slot, question, chosenIndex, correct, Instant.now()));
     }
 
-    public List<Result> history() { return history; }
+    public List<Result> history() { return List.copyOf(history); }
 
     public void setBankedWinnings(long amount) { this.bankedWinnings = amount; }
     public long bankedWinnings() { return bankedWinnings; }

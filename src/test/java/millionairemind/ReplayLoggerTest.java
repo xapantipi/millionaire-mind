@@ -22,7 +22,8 @@ public final class ReplayLoggerTest {
         Path temporaryDirectory = Files.createTempDirectory("millionaire-mind-replay-tests-");
         try {
             Path logDirectory = temporaryDirectory.resolve("nested").resolve("logs");
-            ReplayLogger logger = new ReplayLogger(logDirectory);
+            ReplayLogger logger = new ReplayLogger(logDirectory, java.time.Clock.fixed(
+                    java.time.Instant.parse("2026-10-15T06:00:00Z"), java.time.ZoneOffset.UTC));
             BackendTestSupport.check(Files.isDirectory(logDirectory),
                     "the logger should create its target directory");
 
@@ -65,6 +66,14 @@ public final class ReplayLoggerTest {
                     "the replay should include the Bloom-level tally");
 
             PlayerSession walker = new PlayerSession("Walker");
+            PlayerSession timedOut = new PlayerSession("Timed");
+            timedOut.recordAnswer(1, correctQuestion, -1, false);
+            timedOut.markGameOver();
+            String timeoutContents = Files.readString(logger.logSession(timedOut), StandardCharsets.UTF_8);
+            BackendTestSupport.check(timeoutContents.contains("TIMEOUT")
+                            && timeoutContents.contains("no answer")
+                            && timeoutContents.contains("Correct answer: C) Choice C"),
+                    "timeouts must log safely with the correct answer and no selected option");
             walker.setBankedWinnings(2_000);
             walker.markWalkedAway();
             String walkerContents = Files.readString(logger.logSession(walker), StandardCharsets.UTF_8);

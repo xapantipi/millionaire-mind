@@ -9,17 +9,19 @@ import java.nio.file.StandardOpenOption;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
-/**
- * Persists session results, the full question/answer history, and the
- * per-level score breakdown to a local log file (Section 6, ReplayLogger).
- * Used both for the readme demo walkthrough and for repeat-play statistics.
- */
+/** Saves final winnings, answered-question history, and the Bloom report. */
 public final class ReplayLogger {
 
     private final Path logDirectory;
+    private final java.time.Clock clock;
 
     public ReplayLogger(Path logDirectory) {
+        this(logDirectory, java.time.Clock.systemDefaultZone());
+    }
+
+    ReplayLogger(Path logDirectory, java.time.Clock clock) {
         this.logDirectory = logDirectory;
+        this.clock = clock;
         try {
             Files.createDirectories(logDirectory);
         } catch (IOException e) {
@@ -32,13 +34,13 @@ public final class ReplayLogger {
      */
     public Path logSession(PlayerSession session) {
         String stamp = DateTimeFormatter.ofPattern("yyMMdd-HHmmss")
-                .format(java.time.LocalDateTime.now());
+                .format(java.time.LocalDateTime.now(clock));
         String basename = "replay-" + stamp;
 
         StringBuilder sb = new StringBuilder();
         sb.append("Millionaire Mind - Session Replay Log\n");
         sb.append("Player: ").append(session.playerName()).append("\n");
-        sb.append("Ended: ").append(java.time.LocalDateTime.now()).append("\n");
+        sb.append("Ended: ").append(java.time.LocalDateTime.now(clock)).append("\n");
         sb.append("Outcome: ");
         if (session.becameMillionaire()) sb.append("MILLIONAIRE!\n");
         else if (session.walkedAway()) sb.append("Walked away\n");

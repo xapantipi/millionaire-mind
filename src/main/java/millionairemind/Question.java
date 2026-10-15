@@ -2,10 +2,7 @@ package millionairemind;
 
 import java.util.List;
 
-/**
- * A single, source-cited multiple-choice question tagged with a Bloom's
- * Taxonomy level, per Section 4 of the proposal.
- */
+/** An immutable, source-cited question tagged with a Bloom level. */
 public final class Question {
 
     private final String id;
@@ -28,7 +25,7 @@ public final class Question {
         this.id = id;
         this.level = level;
         this.prompt = prompt;
-        this.options = options;
+        this.options = List.copyOf(options);
         this.correctIndex = correctIndex;
         this.hint = hint;
         this.sourceReading = sourceReading;

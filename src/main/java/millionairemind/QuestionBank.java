@@ -150,28 +150,28 @@ public final class QuestionBank {
 
     /** Returns a copy of the question with its options (and correctIndex) shuffled. */
     private Question shuffleOptions(Question q) {
-    int[] order = {0, 1, 2, 3};
-    // Fisher-Yates shuffle using the RandomGenerator
-    for (int i = order.length - 1; i > 0; i--) {
-        int j = random.nextInt(i + 1);
-        int tmp = order[i];
-        order[i] = order[j];
-        order[j] = tmp;
-    }
-
-    List<String> originalOptions = q.options();
-    List<String> shuffledOptions = new ArrayList<>(4);
-    int newCorrectIndex = -1;
-    for (int newPos = 0; newPos < 4; newPos++) {
-        int originalPos = order[newPos];
-        shuffledOptions.add(originalOptions.get(originalPos));
-        if (originalPos == q.correctIndex()) {
-            newCorrectIndex = newPos;
+        int[] order = {0, 1, 2, 3};
+        // Fisher-Yates keeps every permutation equally likely.
+        for (int i = order.length - 1; i > 0; i--) {
+            int j = random.nextInt(i + 1);
+            int tmp = order[i];
+            order[i] = order[j];
+            order[j] = tmp;
         }
+
+        List<String> shuffledOptions = new ArrayList<>(4);
+        int newCorrectIndex = -1;
+        for (int newPos = 0; newPos < 4; newPos++) {
+            int originalPos = order[newPos];
+            shuffledOptions.add(q.options().get(originalPos));
+            if (originalPos == q.correctIndex()) newCorrectIndex = newPos;
+        }
+        return new Question(q.id(), q.level(), q.prompt(), shuffledOptions,
+                newCorrectIndex, q.hint(), q.sourceReading(), q.pageNumber());
     }
 
-    return new Question(q.id(), q.level(), q.prompt(), shuffledOptions,
-            newCorrectIndex, q.hint(), q.sourceReading(), q.pageNumber());
+    public int unusedCount(BloomLevel level, Set<String> usedIds) {
+        return (int) byLevel.get(level).stream().filter(q -> !usedIds.contains(q.id())).count();
     }
 
     private void validateMinimumQuestionCounts() throws IOException {
