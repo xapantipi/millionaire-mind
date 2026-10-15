@@ -1,0 +1,20 @@
+Millionaire Mind - Session Replay Log
+Player: Ntyko
+Ended: 2026-09-25T12:04:36.221834
+Outcome: Missed a question
+Final winnings: $0
+----------------------------------------
+Question history:
+Q01 [Remembering] (ACT5-Q03) - WRONG
+  Prompt: It is defined as a sequence of steps that transforms that initial state to the goal state.
+  Chosen: D) Searching
+  Correct answer: B) Problem Space
+  Source: Module 3 / A1_The Search Process.pdf, p. 1
+----------------------------------------
+Bloom's report:
+  Remembering: 0/1 correct
+  Understanding: 0/0 correct
+  Applying: 0/0 correct
+  Analyzing: 0/0 correct
+  Evaluating: 0/0 correct
+  Creating: 0/0 correct

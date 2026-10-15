@@ -1,0 +1,80 @@
+Millionaire Mind - Session Replay Log
+Player: dfefe
+Ended: 2026-09-25T13:29:51.532657600
+Outcome: Missed a question
+Final winnings: $64000
+----------------------------------------
+Question history:
+Q01 [Remembering] (ACT5-Q05) - CORRECT
+  Prompt: Which of these is are part of the formal definition of problem-solving?
+  Chosen: A) All of the above.
+  Correct answer: A) All of the above.
+  Source: Module 2 / A1_An Introduction to Problem Solving.pdf, p. 1
+Q02 [Remembering] (ACT3-Q01) - CORRECT
+  Prompt: Which of the following correctly lists the four necessary components required to define a formal, well-defined problem in artificial intelligence?
+  Chosen: B) Initial state, set of valid operators/actions, goal state test, and path constraints
+  Correct answer: B) Initial state, set of valid operators/actions, goal state test, and path constraints
+  Source: Module 3 / A1_The Search Process.pdf, p. 1
+Q03 [Understanding] (ACT1-Q02) - CORRECT
+  Prompt: In a 1998 interview, AI pioneer Marvin Minsky highlighted a significant limitation of modern computers. Despite having vast amounts of information, what did he identify as their primary weakness?
+  Chosen: D) They completely lack "common-sense" knowledge regarding daily life.
+  Correct answer: D) They completely lack "common-sense" knowledge regarding daily life.
+  Source: Module 1 / A1_Intelligence and Other Aids to Problem Solving.pdf, p. 3
+Q04 [Understanding] (ACT5-Q06) - CORRECT
+  Prompt: What can representing a problem with state spaces be problematic?
+  Chosen: C) It can suddenly grow massive, which can be difficult to represent, time consuming, and tends to make the same mistake.
+  Correct answer: C) It can suddenly grow massive, which can be difficult to represent, time consuming, and tends to make the same mistake.
+  Source: Module 2 / A3_Problem Representation.pdf, p. 5
+Q05 [Understanding] (ACT1-Q09) - CORRECT
+  Prompt: Why is IQ criticized for not being able to fully measure one's intelligence?
+  Chosen: D) Intelligence is subjective and cannot be reasonably measured with just one number.
+  Correct answer: D) Intelligence is subjective and cannot be reasonably measured with just one number.
+  Source: Module 1 / A2_What is Intelligence.pdf, p. pp. 9, 11
+Q06 [Applying] (ACT2-Q02) - CORRECT
+  Prompt: If you were to create an AI whose purpose is to help users know the most efficient workout for a specific body part based on their specific physical condition, what application area of AI are you primarily using?
+  Chosen: D) Expert systems
+  Correct answer: D) Expert systems
+  Source: Module 1 / A3_Artificial_Intelligence (AI).pdf, p. 9
+Q07 [Applying] (ACT6-Q03) - CORRECT
+  Prompt: A path-finding robot must navigate a terrain where fitness increases monotonously toward a single global peak with no local optima. To run the navigation on a device with minimal memory, which algorithm should you implement?
+  Chosen: D) Hill-climbing search
+  Correct answer: D) Hill-climbing search
+  Source: Module 3 / A2_Search.pdf, p. 11
+Q08 [Analyzing] (ACT2-Q07) - CORRECT
+  Prompt: Which of the following best describes how LISP and Prolog process information?
+  Chosen: C) LISP represents and manipulates information using lists, while Prolog uses predicate logic syntax to perform logical computations.
+  Correct answer: C) LISP represents and manipulates information using lists, while Prolog uses predicate logic syntax to perform logical computations.
+  Source: Module 1 / A3_Artificial_Intelligence (AI).pdf, p. 10
+Q09 [Analyzing] (ACT4-Q06) - CORRECT
+  Prompt: Which best differentiates a database from a knowledge base?
+  Chosen: A) A database is mainly used to store data, while a knowledge base can process that data to expand its knowledge.
+  Correct answer: A) A database is mainly used to store data, while a knowledge base can process that data to expand its knowledge.
+  Source: Module 2 / A6_Expert Systems.pdf, p. pp. 7-8
+Q10 [Analyzing] (ACT4-Q07) - CORRECT
+  Prompt: Why is backward chaining better suited than forward chaining for a diagnostic system like MYCIN?
+  Chosen: B) Because backward chaining works best when there is a limited, well-defined set of possible conclusions to test.
+  Correct answer: B) Because backward chaining works best when there is a limited, well-defined set of possible conclusions to test.
+  Source: Module 2 / A6_Expert Systems.pdf, p. 6
+Q11 [Evaluating] (ACT2-Q01) - CORRECT
+  Prompt: Why is game playing considered an efficient way to develop and test Artificial Intelligence?
+  Chosen: C) Because games provide a structured task where success or failure can be measured with the least effort.
+  Correct answer: C) Because games provide a structured task where success or failure can be measured with the least effort.
+  Source: Module 1 / A3_Artificial_Intelligence (AI).pdf, p. 8
+Q12 [Evaluating] (ACT5-Q02) - CORRECT
+  Prompt: What makes an informed search different from a blind search?
+  Chosen: C) It uses a rule of thumb to estimate which path leads to the goal faster.
+  Correct answer: C) It uses a rule of thumb to estimate which path leads to the goal faster.
+  Source: Module 3 / A1_The Search Process.pdf, p. 7
+Q13 [Evaluating] (ACT6-Q02) - WRONG
+  Prompt: When evaluating search algorithms for a potentially infinite tree, why is iteratively deepening depth-first search chosen over standard depth-first search?
+  Chosen: D) Iteratively deepening search prevents any nodes from being searched more than once.
+  Correct answer: B) Standard depth-first search might proceed down a single branch infinitely and completely miss the solution.
+  Source: Module 3 / A2_Search.pdf, p. 7
+----------------------------------------
+Bloom's report:
+  Remembering: 2/2 correct
+  Understanding: 3/3 correct
+  Applying: 2/2 correct
+  Analyzing: 3/3 correct
+  Evaluating: 2/3 correct
+  Creating: 0/0 correct

@@ -1,0 +1,65 @@
+Millionaire Mind - Session Replay Log
+Player: Nyko
+Ended: 2026-09-25T16:04:50.016283100
+Outcome: Missed a question
+Final winnings: $2000
+----------------------------------------
+Question history:
+Q01 [Remembering] (ACT1-Q07) - CORRECT
+  Prompt: Which of these are the proposed components of human intelligence?
+  Chosen: D) All of the above
+  Correct answer: D) All of the above
+  Source: Module 1 / A1_Intelligence and Other Aids to Problem Solving.pdf, p. 2
+Q02 [Remembering] (ACT1-Q10) - CORRECT
+  Prompt: Who developed the first Intelligence Quotient (IQ) test in the early 1900s?
+  Chosen: B) Alfred Benet and Theodore Simon
+  Correct answer: B) Alfred Benet and Theodore Simon
+  Source: Module 1 / A1_Intelligence and Other Aids to Problem Solving.pdf, p. 2
+Q03 [Understanding] (ACT3-Q08) - CORRECT
+  Prompt: Based on the concepts of problem solving, why might the exact same situation be considered a "problem" for one person but just a "routine exercise" for another?
+  Chosen: A) Because a situation is only a problem if it is not immediately obvious to that specific individual how to reach the desired goal.
+  Correct answer: A) Because a situation is only a problem if it is not immediately obvious to that specific individual how to reach the desired goal.
+  Source: Module 2 / A1_An Introduction to Problem Solving.pdf, p. 1
+Q04 [Understanding] (ACT3-Q11) - CORRECT
+  Prompt: How does state space representation primarily differ from problem reduction?
+  Chosen: C) State space searches through different positions at a given time, while problem reduction breaks tasks into smaller sub-problems.
+  Correct answer: C) State space searches through different positions at a given time, while problem reduction breaks tasks into smaller sub-problems.
+  Source: Module 2 / A3_Problem Representation.pdf, p. pp. 3-6
+Q05 [Understanding] (ACT4-Q03) - CORRECT
+  Prompt: You are modeling “ordering food at a restaurant” using prompts, roles, and conditions. Which representation scheme are you building?
+  Chosen: D) A script
+  Correct answer: D) A script
+  Source: Module 2 / A5_Knowledge Representation.pdf, p. 14
+Q06 [Applying] (ACT6-Q05) - CORRECT
+  Prompt: A search problem has many possible states at each level. However, the computer has enough memory to keep only the two most promising states at each level according to a heuristic. Which search method is MOST appropriate?
+  Chosen: C) Beam Search
+  Correct answer: C) Beam Search
+  Source: Module 3 / A2_Search.pdf, p. pp. 9-10
+Q07 [Applying] (ACT6-Q03) - CORRECT
+  Prompt: A path-finding robot must navigate a terrain where fitness increases monotonously toward a single global peak with no local optima. To run the navigation on a device with minimal memory, which algorithm should you implement?
+  Chosen: D) Hill-climbing search
+  Correct answer: D) Hill-climbing search
+  Source: Module 3 / A2_Search.pdf, p. 11
+Q08 [Analyzing] (ACT4-Q07) - CORRECT
+  Prompt: Why is backward chaining better suited than forward chaining for a diagnostic system like MYCIN?
+  Chosen: C) Because backward chaining works best when there is a limited, well-defined set of possible conclusions to test.
+  Correct answer: C) Because backward chaining works best when there is a limited, well-defined set of possible conclusions to test.
+  Source: Module 2 / A6_Expert Systems.pdf, p. 6
+Q09 [Analyzing] (ACT6-Q06) - CORRECT
+  Prompt: Analyze how Simulated Annealing mitigates the issue of getting stuck in local maxima during local optimization.
+  Chosen: B) By allowing downhill or suboptimal moves with a probability that decreases over time as the temperature parameter cools.
+  Correct answer: B) By allowing downhill or suboptimal moves with a probability that decreases over time as the temperature parameter cools.
+  Source: Module 3 / A2_Search.pdf, p. pp. 25-27
+Q10 [Analyzing] (ACT7-Q01) - WRONG
+  Prompt: When analyzing a game tree, what specific component acts as a pointer to guide the plausible move generator by assigning heuristic values to leaf nodes?
+  Chosen: C) The branch and bound strategy
+  Correct answer: B) The static evaluation function generator
+  Source: Module 3 / A3_Game Playing.pdf, p. 3
+----------------------------------------
+Bloom's report:
+  Remembering: 2/2 correct
+  Understanding: 3/3 correct
+  Applying: 2/2 correct
+  Analyzing: 2/3 correct
+  Evaluating: 0/0 correct
+  Creating: 0/0 correct

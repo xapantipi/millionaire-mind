@@ -42,8 +42,12 @@ public final class ReplayLoggerTest {
             BackendTestSupport.check(missedLog.getParent().equals(logDirectory),
                     "the replay should be written inside the configured log directory");
             BackendTestSupport.check(missedLog.getFileName().toString()
-                            .matches("session-Ken___Smith-\\d{8}-\\d{6}\\.log"),
-                    "the replay filename should sanitize unsafe player-name characters");
+                            .matches("replay-\\d{6}-\\d{6}(?:-\\d+)?\\.log"),
+                    "the replay filename should be short and independent of player names");
+            Path secondLog = logger.logSession(missed);
+            BackendTestSupport.check(!secondLog.equals(missedLog)
+                            && Files.isRegularFile(secondLog),
+                    "replays finished in the same second should use distinct files");
             String missedContents = Files.readString(missedLog, StandardCharsets.UTF_8);
             BackendTestSupport.check(missedContents.contains("Player: Ken / Smith"),
                     "the replay should preserve the player's display name");

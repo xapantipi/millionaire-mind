@@ -1,0 +1,20 @@
+Millionaire Mind - Session Replay Log
+Player: Nyko
+Ended: 2026-09-25T15:18:52.838512
+Outcome: Missed a question
+Final winnings: $0
+----------------------------------------
+Question history:
+Q01 [Remembering] (ACT5-Q07) - WRONG
+  Prompt: According to the search terminology list, what does "admissibility" refer to in a search algorithm?
+  Chosen: B) The maximum number of nodes stored in memory
+  Correct answer: A) The property of an algorithm to always find an optimal solution
+  Source: Module 3 / A1_The Search Process.pdf, p. 1
+----------------------------------------
+Bloom's report:
+  Remembering: 0/1 correct
+  Understanding: 0/0 correct
+  Applying: 0/0 correct
+  Analyzing: 0/0 correct
+  Evaluating: 0/0 correct
+  Creating: 0/0 correct
