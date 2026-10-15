@@ -1,206 +1,118 @@
 # Millionaire Mind
 
-A Java 17 game for *Millionaire Mind*, the Bloom's Taxonomy variant
-of *Who Wants to Be a Millionaire?* on AI fundamentals, following the
-architecture in the team proposal (Section 6). The console launcher remains
-available; a separate Swing UI is an isolated visual experiment.
+A Java 17 quiz game about AI fundamentals, inspired by *Who Wants to Be a Millionaire?* and organized around Bloom's Taxonomy. Play with the Swing desktop interface or in a terminal. No IDE, Maven, external libraries, or network connection is needed.
 
 ## Requirements
 
-- JDK 17 or later (uses `java.util.random.RandomGenerator`, switch
-  expressions, and `String.isBlank()`). No external libraries or network
-  access are required -- the whole game is self-contained.
+- Building or launching from source: **JDK 17 or later**, with `java` on PATH. Check with `java -version`.
+- Running the packaged JAR: **Java 17 or later**. No source files are needed.
+- Swing requires a graphical desktop. Console play works without one.
+- Windows source launchers use Command Prompt or PowerShell; macOS/Linux launchers use Bash.
 
-## Build & run
+## Play from source
 
-From this experimental worktree on Windows PowerShell:
-
-```powershell
-.\run-swing.cmd
-```
-
-The Windows launcher compiles the Java 17 sources into a temporary directory,
-copies the bundled question bank, then opens Swing. It can also accept a path
-to another question-bank CSV: `.\run-swing.cmd "path\to\questions.csv"`.
-Run it from the `millionaire-mind-swing-ui` worktree; the original
-`millionaire-mind` checkout does not contain this experiment.
-The Swing UI opens fullscreen at the primary display's current resolution,
-without window borders. During the splash screen, click anywhere or press
-**Enter** to skip it immediately; otherwise, it fades away automatically
-after 20 seconds. The title screen offers **Play**, **Instructions**, and
-**Exit**. Play opens a centered player-name form. In the game, select an
-answer and then choose **Lock in answer**. Long answer choices wrap in taller
-cards. For unusually long text, the Swing view reduces its text size to fit
-the display.
-The Swing screens use a navy node theme, a question-progress strip, and
-color-coded prize checkpoints. `resources/bg.wav` loops on the menu,
-instructions, mode selection, and name screens. `resources/sfx/suspense.WAV`
-loops during checkpoint questions (Q5, Q10, and Q15). `resources/sfx/q12.WAV`
-loops during other gameplay questions. Both game tracks stop for
-feedback and results. At zero in Timed Mode, the game displays the time's-up
-feedback screen and plays `resources/sfx/wrong.WAV`.
-`resources/sfx/niera_sound_5.wav` plays on buttons that
-advance toward the game loop or open Instructions, and
-`resources/sfx/niera_sound_2.wav` plays on buttons that return to the main
-menu. `resources/sfx/select_005.wav` plays when selecting an answer and
-locking it in, `resources/sfx/confirmation_004.wav` plays for a correct
-answer, and `resources/sfx/wrong.WAV` plays for a wrong answer. On the results
-screen, `resources/sfx/supreme victory.WAV` plays for winning the $1,000,000
-prize, `resources/sfx/regular winning.WAV` plays when the player banks at
-least $2,000, and `resources/sfx/Clapping Sound Effects.WAV` plays when they
-finish without reaching the first checkpoint. `resources/sfx/error_006.wav`
-plays when an attempted action cannot
-proceed, such as starting without a name or trying to reuse a spent lifeline.
-Spent lifelines keep their disabled appearance but can be clicked to play the
-error sound and show a notice. Successfully using a lifeline plays
-`resources/sfx/niera_sound_2.wav`.
-
-From a Bash shell:
-
-```bash
-./build.sh      # compiles to ./out and copies the question bank alongside it
-./run.sh        # console game with the official bank
-./run-swing.sh  # rebuilds, then opens the Swing game
-
-# or, to try a different/expanded question bank file:
-./run.sh "path/to/other-questions.csv"
-./run-swing.sh "path/to/other-questions.csv"
-```
-
-Manually, without the scripts:
-
-```bash
-javac --release 17 -d out $(find src/main/java -name "*.java")
-cp "resources/Question Bank.csv" out/questions.csv
-java -cp out millionairemind.ConsoleUI
-```
-
-To launch Swing manually with its background and splash audio/assets:
-
-```bash
-javac --release 17 -d out-swing $(find src/main/java -name "*.java" -not -name "ConsoleUI.java") && mkdir -p out-swing/sfx && cp "resources/Question Bank.csv" out-swing/questions.csv && cp "resources/bg.wav" out-swing/bg.wav && cp "resources/sfx/suspense.WAV" out-swing/checkpoint-suspense.wav && cp "resources/sfx/q12.WAV" out-swing/gameplay-theme.wav && cp "resources/splash.gif" out-swing/splash.gif && cp "resources/splash.wav" out-swing/splash.wav && cp "resources/sfx/niera_sound_5.wav" out-swing/sfx/niera_sound_5.wav && cp "resources/sfx/niera_sound_2.wav" out-swing/sfx/niera_sound_2.wav && cp "resources/sfx/select_005.wav" out-swing/sfx/select_005.wav && cp "resources/sfx/confirmation_004.wav" out-swing/sfx/confirmation_004.wav && cp "resources/sfx/error_006.wav" out-swing/sfx/error_006.wav && cp "resources/sfx/wrong.WAV" out-swing/sfx/wrong.WAV && cp "resources/sfx/regular winning.WAV" "out-swing/sfx/regular winning.WAV" && cp "resources/sfx/supreme victory.WAV" "out-swing/sfx/supreme victory.WAV" && cp "resources/sfx/Clapping Sound Effects.WAV" "out-swing/sfx/Clapping Sound Effects.WAV" && java -cp out-swing millionairemind.SwingUI
-```
-
-`SwingUI` also falls back to reading `bg.wav`, both gameplay music tracks,
-and the `sfx/` sounds straight
-from `resources/` on disk (relative to the working directory) if they were
-not copied onto the classpath, so a manual run still gets sound even if a
-copy step is skipped.
-
-Session replay logs are written to `logs/replay-YYMMDD-HHMMSS.log`. A numeric
-suffix keeps files distinct when two sessions finish within the same second.
-Launch from the project directory so both UIs write logs there. In PowerShell
-without Bash, use:
+In Windows PowerShell:
 
 ```powershell
-$javaFiles = @(Get-ChildItem .\src\main\java -Recurse -Filter '*.java' -File |
-    Select-Object -ExpandProperty FullName)
-javac --release 17 -d out $javaFiles
-Copy-Item -LiteralPath 'resources\Question Bank.csv' -Destination 'out\questions.csv'
-java -cp out millionairemind.SwingUI
-# Or: java -cp out millionairemind.ConsoleUI
+.\run.cmd
+.\run.cmd --console
 ```
 
-## Project layout
+On macOS/Linux or Git Bash:
 
-```
-src/main/java/millionairemind/
-  BloomLevel.java       Bloom's six levels + which question slots (1-15) each owns
-  PrizeLadder.java       The 15-rung prize table and the two checkpoint slots (Q5, Q10)
-  Question.java           POJO: prompt, 4 options, correct index, hint, source citation
-  QuestionBank.java       Loads the CSV question bank, draws unused questions per level
-  LifelineManager.java    50:50 / Spin the Wheel / Switch the Question / Phone a Friend
-  PlayerSession.java      Banked winnings, answer history, Bloom's report tallying
-  GameEngine.java         Game state + rules (checkpoints, drop-on-wrong, walk away)
-  ReplayLogger.java       Writes the full session + Bloom's report to a local log file
-  ConsoleUI.java          Thin console presentation layer (talks only to GameEngine)
-  SwingUI.java            Separate Swing menu, instructions, name, game, and results screens
-
-resources/
-  Question Bank.csv       Official source question bank (see format below)
-  bg.wav                  Background music for non-gameplay Swing screens
-  sfx/suspense.WAV       Checkpoint-question music
-  sfx/q12.WAV            Other gameplay music
-  sfx/niera_sound_5.wav   Click sound for buttons progressing to the game/instructions
-  sfx/niera_sound_2.wav   Click sound for buttons returning to the main menu
-  sfx/wrong.WAV           Incorrect-answer sound
-  sfx/regular winning.WAV Result sound after passing the first checkpoint
-  sfx/supreme victory.WAV Millionaire win sound
-  sfx/Clapping Sound Effects.WAV Result sound without a checkpoint
+```bash
+./run.sh
+./run.sh --console
 ```
 
-This mirrors the "Backend Architecture (Java)" section of the proposal
-exactly: `GameEngine` owns state and rules, `QuestionBank` only knows how
-to load and draw questions, `LifelineManager` only knows lifelines,
-`PlayerSession` only tracks progress/results, `ReplayLogger` only persists
-logs, and both `ConsoleUI` and `SwingUI` present the same `GameEngine`
-state. The engine also owns the current question's visible-option mask so
-combined lifelines behave consistently in both UIs.
+The default is Swing. Each source launcher rebuilds the production code and packages resources before starting, so edits cannot leave the game running stale classes. Paths containing spaces are supported. Existing `run-swing.cmd`, `run-swing.ps1`, and `run-swing.sh` commands remain aliases for the default Swing launch.
 
-## Question bank format (`resources/Question Bank.csv`)
+To use another CSV bank, add its path:
 
-One header row, then one row per question:
-
+```powershell
+.\run.cmd --console "C:\my questions\bank.csv"
+.\run.cmd "C:\my questions\bank.csv"
 ```
+
+`--swing` explicitly selects Swing. `--help` prints the launch options. Mode flags must come before the optional CSV path. Relative CSV paths and replay logs use the terminal's current working directory, including when a launcher is invoked from elsewhere.
+
+## Build and distribute
+
+```powershell
+.\build.cmd
+```
+
+```bash
+./build.sh
+```
+
+The build compiles every production class together for Java 17 with UTF-8 and creates **`dist/millionaire-mind.jar`**. Only JDK tools are used. The common build driver is `tools/Project.java`; both sets of scripts call it, keeping packaging identical across platforms.
+
+Copy the JAR anywhere and run:
+
+```bash
+java -jar millionaire-mind.jar
+java -jar millionaire-mind.jar --console
+java -jar millionaire-mind.jar --help
+```
+
+The JAR includes the official question bank, splash animation, and all referenced WAV sounds. It does not need a separate resources directory and contains no tests, development sources, or session logs. Audio failures are reported without preventing gameplay. Generated classes are kept under `build/`; generated classes and the JAR are ignored by Git. Historical session files remain preserved in the repository.
+
+## How to play
+
+Swing opens fullscreen. Click the splash screen or press Enter to skip it. Choose Play, choose a mode, and enter a name. Select an answer, then **Lock in answer**. Feedback gives the correct answer and its source before continuing. Exceptionally long question content and smaller screens can scroll vertically to keep text and controls accessible; the prize ladder stays separate. Results show winnings and the Bloom report, with an option to open the replay file or play again.
+
+- **Normal Mode:** no time limit.
+- **Timed Mode:** 30 seconds per question. A timeout ends the game and pays the last passed checkpoint. Feedback and results do not consume time.
+- **Console:** untimed; enter A-D, use the displayed lifeline shortcuts, or W to Walk Away. Closing terminal input exits cleanly, banking the checkpoint if a session is active.
+- Answer 15 questions: Q1-2 Remembering, Q3-5 Understanding, Q6-7 Applying, Q8-10 Analyzing, Q11-13 Evaluating, Q14-15 Creating.
+- Prizes range from $100 to $1,000,000. Passing Q5 secures $2,000; passing Q10 secures $64,000. Wrong answers and Walk Away pay the last secured checkpoint, rather than the most recent question's prize.
+- Questions are drawn without repeats within a session. Answer positions are shuffled while preserving the correct answer and citation.
+- Each lifeline can be used once: **50:50** removes wrong options; **Spin the Wheel** has a 45% chance to remove one wrong option, 35% to reduce to at most two choices, and 20% to add 15 seconds in Timed Mode; **Switch the Question** draws another unused question at the same Bloom level and resets the timer to 30 seconds; **Phone a Friend** reveals the authored hint.
+- Combined lifelines never restore hidden choices. A switch is refused without consuming the lifeline when the remaining bank cannot support the replacement and all later questions at that level. Bonus time has no effect in untimed play.
+
+Swing supports Tab navigation, Alt+A through Alt+D for answers, Alt+L to lock, Alt+1 through Alt+4 for lifelines, and Alt+W to Walk Away. Used lifelines remain visibly unavailable and explain their status when clicked.
+
+Session logs are written to **`logs/replay-YYMMDD-HHMMSS.log`** under the working directory. Numeric suffixes prevent overwriting sessions completed in the same second. Logs include answered questions, timeout entries, selected/correct answers, citations, final winnings, and per-level performance. Hover over the saved-replay status or Open replay button for its full path. The game reports save failures clearly.
+
+## Tests
+
+```powershell
+.\test.cmd
+.\test.cmd --gui
+```
+
+```bash
+./test.sh
+./test.sh --gui
+```
+
+The default suite tests CSV loading and validation, shuffled answers, game rules, timers, checkpoints, Walk Away, combined lifelines, exhausted switch pools, session history, replay logs, console behavior, and the standalone JAR. Packaging tests copy the JAR to a temporary directory without repository resources and complete a full console win using shuffled answers.
+
+`--gui` also runs real Swing controls on a graphical desktop, including mode selection, timer expiry/bonus/reset, feedback, full-game outcomes, repeat games, and layout checks. It opens temporary test windows. The default command explicitly reports that desktop tests were not run; requesting GUI tests without a desktop fails clearly. Production and tests are compiled separately, and a failing test returns a nonzero exit code.
+
+## Question bank
+
+The editable source is `resources/Question Bank.csv`, currently containing 72 questions. The build packages it as `/questions.csv`. Preserve this header:
+
+```text
 id,level,prompt,optionA,optionB,optionC,optionD,correctIndex,hint,sourceReading,pageNumber
 ```
 
-- `level` is one of `REMEMBERING`, `UNDERSTANDING`, `APPLYING`,
-  `ANALYZING`, `EVALUATING`, `CREATING`.
-- `correctIndex` is 0-based (0=A, 1=B, 2=C, 3=D).
-- `hint` is the text revealed by the **Phone a Friend** lifeline.
-- `sourceReading` + `pageNumber` are shown after every answer as the
-  citation, per the proposal's "Source Citation on Every Question" feature.
-- Wrap any field containing a comma or quote in double quotes (standard
-  CSV quoting, `""` for an embedded quote).
-- Quoted fields may contain line breaks, so one CSV record is not necessarily
-  one physical text line. The loader validates the header and all records
-  before gameplay, including IDs, Bloom levels, options, answer indexes,
-  source information, and the minimum questions needed for the 15 slots.
+`level` must be REMEMBERING, UNDERSTANDING, APPLYING, ANALYZING, EVALUATING, or CREATING. `correctIndex` is zero-based: 0=A, 1=B, 2=C, 3=D. All four options, a hint, and source information are required. IDs must be unique. The loader validates the complete bank before play and requires enough questions for each level's slots. Include spare questions to support switching.
 
-The official `Question Bank.csv` is the editable source file. Keep adding
-source-cited questions from the assigned readings using the same 11 columns
-and four-option format. The loader requires enough questions for every slot
-in the 15-question game; additional questions provide more variety between
-playthroughs.
+Standard CSV quoting is supported: quote fields containing commas, quotes, or line breaks and double embedded quotes. A quoted multiline field is one record even when it spans several physical lines.
 
-## Gameplay rules implemented
+## Code responsibilities
 
-- 15 questions across six Bloom's tiers (`Q1-2` Remembering, `Q3-5`
-  Understanding, `Q6-7` Applying, `Q8-10` Analyzing, `Q11-13` Evaluating,
-  `Q14-15` Creating), prizes from $100 up to $1,000,000.
-- Checkpoints at Q5 and Q10: a wrong answer drops the player back to the
-  last checkpoint they passed (or to $0 if none yet).
-- Walk Away at any time banks the last checkpoint amount.
-- Four lifelines, each usable once per game: 50:50, Spin the Wheel
-  (weighted: reveal-one-wrong / reduce-to-two / bonus-time), Switch the
-  Question (redraws from the same Bloom's level), Phone a Friend (reveals
-  the question's hint).
-- Every question in a level is drawn at random from the unused pool for
-  that level, so repeat playthroughs vary even though the bank is fixed.
-- Post-game Bloom's report: per-level correct/incorrect tally plus
-  strongest/weakest level, computed entirely locally.
-- Full session replay log (every question drawn, chosen answer, outcome,
-  and the Bloom's breakdown) written to `logs/`.
+- `Question` and `BloomLevel`: question data and level mapping.
+- `QuestionBank`: CSV parsing/validation, unused-question selection, and answer shuffling.
+- `GameEngine`: progression, visible choices, countdown rules, checkpoints, and payouts.
+- `LifelineManager`: lifeline availability and randomized outcomes.
+- `PlayerSession`: answer history and Bloom reporting.
+- `ReplayLogger`: persistent session logs.
+- `SwingUI` and `ConsoleUI`: input and presentation; both call the same engine.
+- `GameAudio`: asynchronous audio loading and playback cleanup.
+- `Main`: shared launch arguments and startup errors.
 
-## Swing experiment
-
-Start by entering a player name. Select an answer and use **Lock in answer**
-to submit it; the feedback screen shows the correct answer and source before
-continuing. The right ladder shows all 15 prizes, with Q5 and Q10 highlighted
-as checkpoints. The guaranteed amount and Walk Away payout come from the
-engine. The centered feedback screen marks correct answers in green and
-incorrect answers in red. A Fifty-Fifty removal leaves the choice card blank.
-The results screen shows winnings, the Bloom report, and an **Open replay**
-button that opens the saved log in the desktop's default application. The
-window supports keyboard focus, answer mnemonics Alt+A through
-Alt+D, Alt+L to lock, Alt+1 through Alt+4 for lifelines, and Alt+W to walk
-away. All fifteen prize rungs are visible without scrolling.
-
-Spin the Wheel's bonus-time result is displayed as a timer-mode outcome; it
-does not start a timer in this untimed game.
-
-## Not yet implemented
-
-- The optional 30-second-per-question timer mode mentioned in Section 3
-  (the base implementation is untimed, as specified).
+Tests live in `src/test/java/millionairemind`. No JavaFX branch is needed for this version.

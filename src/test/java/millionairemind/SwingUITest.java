@@ -477,8 +477,6 @@ public final class SwingUITest {
                     "long answers should increase the answer-card height: grid="
                             + grid.getPreferredSize() + " answer=" + answer.getSize());
             if (longChoicePreview != null) {
-                ui.frame().setSize(1650, 960);
-                ui.frame().validate();
                 capture(ui.frame(), longChoicePreview);
             }
             click(ui, "answerA");

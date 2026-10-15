@@ -1,12 +1,4 @@
 #!/usr/bin/env bash
-# Compiles Millionaire Mind into ./out and copies the question bank alongside
-# the compiled classes so it loads as a classpath resource.
 set -euo pipefail
-cd "$(dirname "$0")"
-
-rm -rf out
-mkdir -p out
-javac --release 17 -d out $(find src -name "*.java")
-cp "resources/Question Bank.csv" out/questions.csv
-
-echo "Build complete. Run with: ./run.sh or ./run-swing.sh"
+project_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+exec java "$project_dir/tools/Project.java" "$project_dir" build "$@"
