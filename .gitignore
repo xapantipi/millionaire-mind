@@ -1,7 +1,21 @@
-/logs/*.log
+/build/
+/dist/
+/logs/
 /out/
 /out-swing/
 /millionairemind/
 
-/build/
-/dist/
+# Development files retained locally; full version is on finalize-swing-game.
+/docs/
+/src/test/
+/MCQ/README.md
+/build.sh
+/run.sh
+/test.cmd
+/test.sh
+/release.cmd
+/run-swing.cmd
+/run-swing.ps1
+/run-swing.sh
+/resources/**/*.ogg
+/ReadMeFirst.txt
