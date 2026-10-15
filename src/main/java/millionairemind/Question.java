@@ -53,7 +53,7 @@ public final class Question {
     }
 
     public String citation() {
-        return sourceReading + ", p. " + pageNumber;
+        return sourceReading + (pageNumber.startsWith("PDF p") ? ", " : ", p. ") + pageNumber;
     }
 
     @Override

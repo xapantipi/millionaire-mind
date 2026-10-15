@@ -57,8 +57,11 @@ preserved inside the packaged JAR. Open the CSV to inspect prompts, four
 options, correctIndex, hints, readings, and page numbers. correctIndex is
 zero-based: 0=A, 1=B, 2=C, 3=D. Do not add or remove schema columns.
 
-A full 15-question round selects five questions from each of Modules 1-3,
-while retaining the six Bloom tiers. Source readings identify modules with
+A full 15-question round selects 4/4/4/3 across Modules 1-4, varying which
+module gets three, while retaining the six Bloom tiers. The bank contains
+96 questions from all nine team activities, including machine learning and
+ensemble methods. New citations use PDF page positions, rather than printed
+book page numbers. Source readings identify modules with
 the existing "Module N / Reading.pdf" prefix. Switch selects an unused
 question from the same Bloom level AND module, preserving module quotas.
 

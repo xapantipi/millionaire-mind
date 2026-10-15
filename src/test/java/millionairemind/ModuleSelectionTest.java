@@ -14,18 +14,70 @@ public final class ModuleSelectionTest {
 
     public static void main(String[] args) throws Exception {
         officialRoundsStayBalancedAndVaried();
+        officialActivityAnswersAndSourcesArePreserved();
         sparseFeasibleBankWorks();
+        sparseFourModuleBankTriesOtherQuotas();
         impossibleModuleCoverageFailsBeforePlay();
         moduleMetadataDoesNotChangeTheSchema();
         System.out.println("ModuleSelectionTest passed");
     }
 
+    private static void officialActivityAnswersAndSourcesArePreserved() throws Exception {
+        String[] answers = {
+            "Improve through experience", "They help it learn patterns in faces", "Supervised learning",
+            "Knowledge base", "To find errors and improve", "Failure-driven learning", "Data mining",
+            "It can learn new patterns from examples", "Butter", "Learning by analogy",
+            "Induction learns rules from examples; deduction draws conclusions from facts", "Classification",
+            "Their errors are too similar", "Incorrect, because models can share the same errors",
+            "Train accurate models with different errors and combine their votes", "Model B lets some estimates count more",
+            "Simple averaging, since no weights need to be learned", "Average the three price estimates",
+            "No label has over half the votes, but A and B tie for the most", "Majority voting",
+            "Use plurality voting with a rule for breaking ties", "The first is homogeneous; the second is heterogeneous",
+            "They may find different solutions that work better together",
+            "Train a second model using predictions from the first models"
+        };
+        QuestionBank bank = QuestionBank.loadFromResource("/MCQ/Question Bank.csv", new Random(81));
+        Set<String> ids = new HashSet<>();
+        Map<String, Integer> activities = new HashMap<>();
+        Map<BloomLevel, Integer> newLevels = new HashMap<>();
+        for (BloomLevel level : BloomLevel.values()) {
+            for (int i = 0; i < bank.countFor(level); i++) {
+                Question question = bank.drawQuestion(level, ids);
+                BackendTestSupport.check(ids.add(question.id()), "duplicate official question");
+                String activity = question.id().split("-")[0];
+                activities.merge(activity, 1, Integer::sum);
+                if (!activity.equals("ACT8") && !activity.equals("ACT9")) continue;
+                int offset = activity.equals("ACT8") ? 0 : 12;
+                int number = Integer.parseInt(question.id().substring(question.id().indexOf('Q') + 1));
+                BackendTestSupport.check(question.correctOptionText().equals(answers[offset + number - 1]),
+                        "activity answer key changed after shuffling: " + question.id());
+                BackendTestSupport.check(question.module().equals("Module 4")
+                                && question.sourceReading().endsWith(".pdf")
+                                && question.pageNumber().startsWith("PDF p")
+                                && question.citation().contains(", PDF p")
+                                && !question.citation().contains(", p. PDF"),
+                        "new question needs a reading and explicit PDF page: " + question.id());
+                newLevels.merge(level, 1, Integer::sum);
+            }
+        }
+        for (int activity = 1; activity <= 9; activity++) {
+            int expected = activity >= 5 && activity <= 7 ? 8 : 12;
+            BackendTestSupport.check(activities.getOrDefault("ACT" + activity, 0) == expected,
+                    "missing or extra questions in activity " + activity);
+        }
+        BackendTestSupport.check(newLevels.size() == 6
+                        && newLevels.values().stream().allMatch(count -> count == 4),
+                "Activities 8 and 9 should add four questions per Bloom tier");
+    }
+
     private static void officialRoundsStayBalancedAndVaried() throws Exception {
         Set<String> rounds = new HashSet<>();
+        Set<String> smallerModules = new HashSet<>();
+        Set<String> newQuestions = new HashSet<>();
         for (int seed = 0; seed < 90; seed++) {
-            var random = new Random(seed);
+            var random = new Random(seed * 0x9E3779B97F4A7C15L);
             QuestionBank bank = QuestionBank.loadFromResource("/MCQ/Question Bank.csv", random);
-            BackendTestSupport.check(bank.totalCount() == 72, "official questions must be preserved");
+            BackendTestSupport.check(bank.totalCount() == 96, "all nine activities must be included");
             GameEngine engine = new GameEngine(bank, random, "Module Test", seed % 2 == 0);
             Map<String, Integer> counts = new HashMap<>();
             Set<String> presented = new HashSet<>();
@@ -50,15 +102,42 @@ public final class ModuleSelectionTest {
                     }
                 }
                 counts.merge(question.module(), 1, Integer::sum);
+                if (question.id().startsWith("ACT8-") || question.id().startsWith("ACT9-")) {
+                    newQuestions.add(question.id());
+                }
                 signature.append(question.id()).append(':').append(question.correctIndex()).append(';');
                 engine.answer(question.correctIndex());
             }
-            BackendTestSupport.check(counts.equals(Map.of("Module 1", 5, "Module 2", 5, "Module 3", 5)),
-                    "unequal selected module counts: " + counts);
+            BackendTestSupport.check(counts.keySet().equals(Set.of("Module 1", "Module 2", "Module 3", "Module 4"))
+                            && counts.values().stream().filter(count -> count == 4).count() == 3
+                            && counts.values().stream().filter(count -> count == 3).count() == 1,
+                    "expected 4/4/4/3 module counts: " + counts);
+            counts.forEach((module, count) -> { if (count == 3) smallerModules.add(module); });
             BackendTestSupport.check(engine.session().becameMillionaire(), "balanced round did not complete");
             rounds.add(signature.toString());
         }
         BackendTestSupport.check(rounds.size() > 80, "rounds must remain varied");
+        BackendTestSupport.check(smallerModules.size() == 4, "the smaller quota must vary across all modules");
+        BackendTestSupport.check(newQuestions.size() == 24, "every new question must be reachable");
+    }
+
+    private static void sparseFourModuleBankTriesOtherQuotas() throws Exception {
+        StringBuilder csv = new StringBuilder(HEADER);
+        for (int slot = 1; slot <= 15; slot++) {
+            csv.append(row("F" + slot, BloomLevel.forSlot(slot), "Module " + ((slot - 1) / 4 + 1)));
+        }
+        QuestionBank bank = load(csv.toString());
+        for (int seed = 0; seed < 30; seed++) {
+            GameEngine engine = new GameEngine(bank, new Random(seed), "Sparse Four");
+            Map<String, Integer> counts = new HashMap<>();
+            while (!engine.isGameOver()) {
+                Question question = engine.currentQuestion();
+                counts.merge(question.module(), 1, Integer::sum);
+                engine.answer(question.correctIndex());
+            }
+            BackendTestSupport.check(counts.equals(Map.of("Module 1", 4, "Module 2", 4, "Module 3", 4, "Module 4", 3)),
+                    "sparse four-module bank should find its only feasible quotas");
+        }
     }
 
     private static void sparseFeasibleBankWorks() throws Exception {
@@ -91,7 +170,7 @@ public final class ModuleSelectionTest {
             load(csv.toString());
             throw new AssertionError("incompatible Bloom/module distribution accepted");
         } catch (IOException e) {
-            BackendTestSupport.check(e.getMessage().contains("equal module counts"), "unclear coverage error");
+            BackendTestSupport.check(e.getMessage().contains("balanced module counts"), "unclear coverage error");
         }
     }
 

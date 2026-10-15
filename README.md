@@ -92,7 +92,7 @@ Swing opens fullscreen. Click the splash screen or press Enter to skip it. Choos
 - **Console:** untimed; enter A-D, use the displayed lifeline shortcuts, or W to Walk Away. Closing terminal input exits cleanly, banking the checkpoint if a session is active.
 - Answer 15 questions: Q1-2 Remembering, Q3-5 Understanding, Q6-7 Applying, Q8-10 Analyzing, Q11-13 Evaluating, Q14-15 Creating.
 - Prizes range from $100 to $1,000,000. Passing Q5 secures $2,000; passing Q10 secures $64,000. Wrong answers and Walk Away pay the last secured checkpoint, rather than the most recent question's prize.
-- Each full round contains five questions from each of Modules 1, 2, and 3, without repeats and with the same Bloom tiers. The round is selected before play to ensure both constraints can be met. Answer positions are shuffled while preserving the correct answer and citation.
+- Each full round selects 4/4/4/3 questions across Modules 1-4, without repeats and with the same Bloom tiers. Which module gets three varies across games. The round is selected before play to ensure both constraints can be met. Answer positions are shuffled while preserving the correct answer and citation.
 - Each lifeline can be used once: **50:50** removes wrong options; **Spin the Wheel** has a 45% chance to remove one wrong option, 35% to reduce to at most two choices, and 20% to add 15 seconds in Timed Mode; **Switch the Question** draws another unused question at the same Bloom level and module and resets the timer to 30 seconds; **Phone a Friend** reveals the authored hint.
 - Combined lifelines never restore hidden choices. A switch is refused without consuming the lifeline when no spare question is available outside the planned round at that Bloom level and module. Bonus time has no effect in untimed play.
 
@@ -118,13 +118,13 @@ The default suite tests CSV loading and validation, shuffled answers, game rules
 
 ## Question bank
 
-The editable source is `MCQ/Question Bank.csv`, currently containing 72 questions. The build packages it as `/MCQ/Question Bank.csv`. Preserve this header:
+The editable source is `MCQ/Question Bank.csv`, containing all 96 questions from the team's nine activities. Activities 8-9 add 24 Machine Learning questions under Module 4. The build packages it as `/MCQ/Question Bank.csv`. Preserve this header:
 
 ```text
 id,level,prompt,optionA,optionB,optionC,optionD,correctIndex,hint,sourceReading,pageNumber
 ```
 
-`level` must be REMEMBERING, UNDERSTANDING, APPLYING, ANALYZING, EVALUATING, or CREATING. `correctIndex` is zero-based: 0=A, 1=B, 2=C, 3=D. All four options, a hint, and source information are required. IDs must be unique. The loader validates the complete bank before play and requires enough questions for each level's slots. Include spare questions to support switching. Modules are derived from the existing `sourceReading` prefix (`Module N / Reading.pdf`); no new column is used. Multi-module banks must label every source consistently, the module count must divide 15, and the pool must support all Bloom tiers with equal module quotas. Incompatible pools fail validation before play. A custom bank with no module prefixes is treated as one unspecified module. See `MCQ/README.md` for checking details.
+`level` must be REMEMBERING, UNDERSTANDING, APPLYING, ANALYZING, EVALUATING, or CREATING. `correctIndex` is zero-based: 0=A, 1=B, 2=C, 3=D. All four options, a hint, and source information are required. IDs must be unique. The loader validates the complete bank before play and requires enough questions for each level's slots. Include spare questions to support switching. Modules are derived from the existing `sourceReading` prefix (`Module N / Reading.pdf`); no new column is used. Multi-module banks must label every source consistently, contain at most 15 modules, and support all Bloom tiers with module counts differing by at most one. Incompatible pools fail validation before play. A custom bank with no module prefixes is treated as one unspecified module. New citations explicitly use PDF page positions. See `MCQ/README.md` and `docs/question-bank-sources.md` for checking details.
 
 Standard CSV quoting is supported: quote fields containing commas, quotes, or line breaks and double embedded quotes. A quoted multiline field is one record even when it spans several physical lines.
 

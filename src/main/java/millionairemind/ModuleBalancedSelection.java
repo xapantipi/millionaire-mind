@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.random.RandomGenerator;
 
-/** Allocates Bloom slots to equal module quotas before any question is presented. */
+/** Allocates Bloom slots to module counts that differ by at most one. */
 final class ModuleBalancedSelection {
     private final Map<BloomLevel, List<Question>> bank;
     private final List<String> modules;
@@ -17,8 +17,8 @@ final class ModuleBalancedSelection {
         this.bank = bank;
         this.random = random;
         modules = bank.values().stream().flatMap(List::stream).map(Question::module).distinct().sorted().toList();
-        if (modules.isEmpty() || PrizeLadder.totalSlots() % modules.size() != 0) {
-            throw new IllegalArgumentException("The module count must divide the 15-question game equally");
+        if (modules.isEmpty() || modules.size() > PrizeLadder.totalSlots()) {
+            throw new IllegalArgumentException("The bank must contain between 1 and 15 modules");
         }
         if (modules.size() > 1 && modules.contains("Unspecified")) {
             throw new IllegalArgumentException("Every sourceReading must start with 'Module N /' in a multi-module bank");
@@ -46,6 +46,32 @@ final class ModuleBalancedSelection {
     }
 
     private int[][] allocation() {
+        int[] quotas = new int[modules.size()];
+        Arrays.fill(quotas, PrizeLadder.totalSlots() / modules.size());
+        List<Integer> order = new ArrayList<>();
+        for (int module = 0; module < modules.size(); module++) order.add(module);
+        if (random != null) shuffle(order);
+        int[][] counts = tryQuotas(quotas, order, 0, PrizeLadder.totalSlots() % modules.size());
+        if (counts == null) {
+            throw new IllegalArgumentException("Question bank cannot fill every Bloom tier with balanced module counts");
+        }
+        return counts;
+    }
+
+    private int[][] tryQuotas(int[] quotas, List<Integer> order, int start, int extras) {
+        if (extras == 0) return allocationFor(quotas);
+        // Try other balanced quotas when a sparse bank cannot fill the first choice.
+        for (int i = start; i <= order.size() - extras; i++) {
+            int module = order.get(i);
+            quotas[module]++;
+            int[][] counts = tryQuotas(quotas, order, i + 1, extras - 1);
+            quotas[module]--;
+            if (counts != null) return counts;
+        }
+        return null;
+    }
+
+    private int[][] allocationFor(int[] quotas) {
         int levelCount = BloomLevel.values().length;
         int moduleStart = 1 + levelCount;
         int sink = moduleStart + modules.size();
@@ -62,7 +88,7 @@ final class ModuleBalancedSelection {
             }
         }
         for (int module = 0; module < modules.size(); module++) {
-            capacity[moduleStart + module][sink] = PrizeLadder.totalSlots() / modules.size();
+            capacity[moduleStart + module][sink] = quotas[module];
         }
 
         // A capacity graph avoids greedy draws that strand later Bloom tiers or module quotas.
@@ -85,9 +111,7 @@ final class ModuleBalancedSelection {
                     }
                 }
             }
-            if (parent[sink] < 0) {
-                throw new IllegalArgumentException("Question bank cannot fill every Bloom tier with equal module counts");
-            }
+            if (parent[sink] < 0) return null;
             int amount = PrizeLadder.totalSlots();
             for (int to = sink; to != 0; to = parent[to]) {
                 amount = Math.min(amount, capacity[parent[to]][to]);
